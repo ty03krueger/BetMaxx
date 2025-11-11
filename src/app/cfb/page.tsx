@@ -2,42 +2,30 @@
 import * as React from "react";
 import { useMemo, useState, useEffect } from "react";
 import {
-  Stack,
-  Typography,
-  Button,
-  ButtonGroup,
-  Alert,
-  Skeleton,
-  IconButton,
-  Card,
-  CardContent,
-  Box,
+  Stack, Typography, Button, ButtonGroup, Alert, Skeleton, IconButton, Card, CardContent, Box
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import GameCard from "./components/GameCard";
-import GameDetail from "./components/GameDetail";
-import { useOdds } from "./hooks/useOdds";
-import type { Game } from "./api/odds/route";
+import GameCard from "../components/GameCard";
+import GameDetail from "../components/GameDetail";
+import { useOdds } from "../hooks/useOdds";
+import type { Game } from "../api/odds/route";
 import { useSearchParams } from "next/navigation";
 
-// View maps to your existing Market prop
 type View = "all" | "ml" | "ou";
 type Market = "Moneyline" | "Total";
 
-export default function Home() {
+export default function CollegeFootballPage() {
   const [selected, setSelected] = useState<Game | null>(null);
-
-  // Default to All Games
   const [view, setView] = useState<View>("all");
 
-  // NFL only (hook defaults to nfl)
-  const { games, loading, error, reload } = useOdds();
+  // College feed
+  const { games, loading, error, reload } = useOdds({ sport: "ncaaf" });
 
   // ---- Search wiring ----
   const searchParams = useSearchParams();
   const [query, setQuery] = useState<string>(searchParams.get("q") || "");
 
-  // Keep local query in sync if URL changes (e.g., header clear/type)
+  // Keep local query in sync if URL changes (e.g., via header clear/type)
   useEffect(() => {
     setQuery(searchParams.get("q") || "");
   }, [searchParams]);
@@ -64,18 +52,16 @@ export default function Home() {
     });
   }, [games, query]);
 
-  // Derive the Market for components that still need it
   const market: Market = useMemo(
     () => (view === "ou" ? "Total" : "Moneyline"),
     [view]
   );
 
-  // Title reflects NFL + view (+ search suffix)
   const title = useMemo(() => {
     const base =
-      view === "all" ? "NFL · All Games" :
-      view === "ml"  ? "NFL · Moneyline" :
-                       "NFL · Over/Under";
+      view === "all" ? "CFB · All Games" :
+      view === "ml"  ? "CFB · Moneyline" :
+                       "CFB · Over/Under";
     return query ? `${base} · Search: “${query}”` : base;
   }, [view, query]);
 
@@ -88,7 +74,6 @@ export default function Home() {
         </Typography>
 
         <Stack direction="row" alignItems="center" spacing={1}>
-          {/* 3-way view filter (no league toggle here) */}
           <ButtonGroup>
             <Button
               variant={view === "all" ? "contained" : "outlined"}
@@ -129,39 +114,26 @@ export default function Home() {
         </Stack>
       )}
 
-      {/* Lists */}
       {!loading && filteredGames && (
         <Stack spacing={1.5}>
           {filteredGames.length === 0 && (
             <Alert severity="info">
-              No games match your search. Try a team name (e.g., “Eagles” or “Chiefs”).
+              No games match your search. Try a team name (e.g., “Alabama” or “Ohio State”).
             </Alert>
           )}
 
-          {/* All Games: simple matchup/time, no odds on card */}
           {view === "all" &&
             filteredGames.map((g) => (
-              <AllGamesCard
-                key={g.eventId}
-                game={g}
-                onOpen={() => setSelected(g)}
-              />
+              <AllGamesCard key={g.eventId} game={g} onOpen={() => setSelected(g)} />
             ))}
 
-          {/* ML / O/U reuse your existing component */}
           {view !== "all" &&
             filteredGames.map((g) => (
-              <GameCard
-                key={g.eventId}
-                game={g}
-                onOpen={setSelected}
-                market={market}
-              />
+              <GameCard key={g.eventId} game={g} onOpen={setSelected} market={market} />
             ))}
         </Stack>
       )}
 
-      {/* Modal — shows ML+O/U+TD placeholder when opened from All Games */}
       <GameDetail
         game={selected}
         open={Boolean(selected)}
@@ -173,7 +145,6 @@ export default function Home() {
   );
 }
 
-/** Minimal card for the “All Games” view: matchup + kickoff only */
 function AllGamesCard({
   game,
   onOpen,
@@ -193,12 +164,7 @@ function AllGamesCard({
   return (
     <Card variant="outlined" sx={{ borderRadius: 4 }}>
       <CardContent>
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="space-between"
-          gap={2}
-        >
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
           <Box>
             <Typography variant="overline" sx={{ opacity: 0.75 }}>
               {kickoff}
@@ -207,7 +173,6 @@ function AllGamesCard({
               {away} @ {home}
             </Typography>
           </Box>
-
           <Button
             variant="contained"
             onClick={onOpen}
