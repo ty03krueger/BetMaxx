@@ -2,7 +2,8 @@
 import * as React from "react";
 import { useMemo, useState, useEffect } from "react";
 import {
-  Stack, Typography, Button, ButtonGroup, Alert, Skeleton, IconButton, Card, CardContent, Box
+  Stack, Typography, Button, ButtonGroup, Alert, Skeleton, IconButton, Card, CardContent, Box,
+  Chip, Popover, FormGroup, FormControlLabel, Checkbox, Divider,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import GameCard from "../components/GameCard";
@@ -10,6 +11,16 @@ import GameDetail from "../components/GameDetail";
 import { useOdds } from "../hooks/useOdds";
 import type { Game } from "../api/odds/route";
 import { useSearchParams } from "next/navigation";
+import {
+  CONFERENCES,
+  GROUP5,
+  POWER5,
+  type Conference,
+  getConferenceForTeam,
+} from "../data/cfbConferences";
+
+// NEW: import isFinal (global helper with 6h CFB cutoff)
+import { isFinal } from "@/app/utils/isFinal";
 
 type View = "all" | "ml" | "ou";
 type Market = "Moneyline" | "Total";
@@ -18,19 +29,14 @@ export default function CollegeFootballPage() {
   const [selected, setSelected] = useState<Game | null>(null);
   const [view, setView] = useState<View>("all");
 
-  // College feed
   const { games, loading, error, reload } = useOdds({ sport: "ncaaf" });
 
   // ---- Search wiring ----
   const searchParams = useSearchParams();
   const [query, setQuery] = useState<string>(searchParams.get("q") || "");
-
-  // Keep local query in sync if URL changes (e.g., via header clear/type)
   useEffect(() => {
     setQuery(searchParams.get("q") || "");
   }, [searchParams]);
-
-  // Listen to the custom event fired by the header
   useEffect(() => {
     function onSearch(e: any) {
       setQuery((e?.detail?.q || "") as string);
@@ -39,18 +45,59 @@ export default function CollegeFootballPage() {
     return () => window.removeEventListener("betmaxx:search", onSearch);
   }, []);
 
-  // Filter games by team names
-  const filteredGames = useMemo(() => {
-    if (!games) return null;
+  // ---- Conference filter state ----
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [selectedConfs, setSelectedConfs] = useState<Set<Conference>>(new Set());
+
+  const handleOpenConfs = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleCloseConfs = () => setAnchorEl(null);
+  const open = Boolean(anchorEl);
+
+  const toggleConf = (conf: Conference) => {
+    setSelectedConfs(prev => {
+      const next = new Set(prev);
+      if (next.has(conf)) next.delete(conf);
+      else next.add(conf);
+      return next;
+    });
+  };
+
+  const clearConfs = () => setSelectedConfs(new Set());
+  const selectP5 = () => setSelectedConfs(new Set(Array.from(POWER5)));
+  const selectG5 = () => setSelectedConfs(new Set(Array.from(GROUP5)));
+  const selectInd = () => setSelectedConfs(new Set<Conference>(["Independents"]));
+
+  // ---- filtering pipeline ----
+  // 0) drop finished games first (uses isFinal with 6h CFB cutoff)
+  const activeGames: Game[] = useMemo(() => {
+    if (!games) return [];
+    return games.filter((g) => !isFinal(g));
+  }, [games]);
+
+  // 1) search filter
+  const searchedGames: Game[] = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return games;
-    return games.filter((g) => {
+    if (!q) return activeGames;
+    return activeGames.filter((g) => {
       const [away, home] = g.teams;
       const a = away.toLowerCase();
       const h = home.toLowerCase();
       return a.includes(q) || h.includes(q) || `${a} @ ${h}`.includes(q);
     });
-  }, [games, query]);
+  }, [activeGames, query]);
+
+  // 2) conference filter (keep if either team matches)
+  const filteredGames: Game[] = useMemo(() => {
+    if (selectedConfs.size === 0) return searchedGames;
+    return searchedGames.map((g) => {
+      return { ...g };
+    }).filter((g) => {
+      const [away, home] = g.teams;
+      const ca = getConferenceForTeam(away);
+      const ch = getConferenceForTeam(home);
+      return selectedConfs.has(ca) || selectedConfs.has(ch);
+    });
+  }, [searchedGames, selectedConfs]);
 
   const market: Market = useMemo(
     () => (view === "ou" ? "Total" : "Moneyline"),
@@ -62,8 +109,11 @@ export default function CollegeFootballPage() {
       view === "all" ? "CFB · All Games" :
       view === "ml"  ? "CFB · Moneyline" :
                        "CFB · Over/Under";
-    return query ? `${base} · Search: “${query}”` : base;
-  }, [view, query]);
+    const parts = [base];
+    if (query) parts.push(`Search: “${query}”`);
+    if (selectedConfs.size > 0) parts.push(`${selectedConfs.size} conf`);
+    return parts.join(" · ");
+  }, [view, query, selectedConfs]);
 
   return (
     <Stack spacing={2}>
@@ -74,6 +124,24 @@ export default function CollegeFootballPage() {
         </Typography>
 
         <Stack direction="row" alignItems="center" spacing={1}>
+          {/* Conference Filters */}
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip
+              label={selectedConfs.size ? `Conference (${selectedConfs.size})` : "Conference"}
+              onClick={handleOpenConfs}
+              variant="outlined"
+              color={selectedConfs.size ? "primary" : "default"}
+              sx={{ borderRadius: 999 }}
+            />
+            <Chip label="P5" variant="outlined" onClick={selectP5} />
+            <Chip label="G5" variant="outlined" onClick={selectG5} />
+            <Chip label="Ind" variant="outlined" onClick={selectInd} />
+            {selectedConfs.size > 0 && (
+              <Chip label="Clear" variant="outlined" onClick={clearConfs} />
+            )}
+          </Stack>
+
+          {/* View filter */}
           <ButtonGroup>
             <Button
               variant={view === "all" ? "contained" : "outlined"}
@@ -104,6 +172,42 @@ export default function CollegeFootballPage() {
         </Stack>
       </Stack>
 
+      {/* Conference popover */}
+      <Popover
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleCloseConfs}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+      >
+        <Box sx={{ p: 2, maxWidth: 280 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+            Choose conferences
+          </Typography>
+          <FormGroup>
+            {CONFERENCES.map((c) => (
+              <FormControlLabel
+                key={c}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={selectedConfs.has(c)}
+                    onChange={() => toggleConf(c)}
+                  />
+                }
+                label={c}
+              />
+            ))}
+          </FormGroup>
+          <Divider sx={{ my: 1.5 }} />
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" onClick={selectP5}>P5</Button>
+            <Button size="small" variant="outlined" onClick={selectG5}>G5</Button>
+            <Button size="small" variant="outlined" onClick={selectInd}>Ind</Button>
+            <Button size="small" onClick={clearConfs}>Clear</Button>
+          </Stack>
+        </Box>
+      </Popover>
+
       {error && <Alert severity="error">{error}</Alert>}
 
       {loading && (
@@ -114,11 +218,11 @@ export default function CollegeFootballPage() {
         </Stack>
       )}
 
-      {!loading && filteredGames && (
+      {!loading && (
         <Stack spacing={1.5}>
           {filteredGames.length === 0 && (
             <Alert severity="info">
-              No games match your search. Try a team name (e.g., “Alabama” or “Ohio State”).
+              No games match your search/filters. Try clearing Conference or search.
             </Alert>
           )}
 
@@ -186,4 +290,3 @@ function AllGamesCard({
     </Card>
   );
 }
-

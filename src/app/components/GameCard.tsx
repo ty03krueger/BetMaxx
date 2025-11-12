@@ -9,10 +9,16 @@ import {
   Box,
   Divider,
   Chip,
+  Button, // ← added
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import type { Game } from "../data/mockOdds";
 import { bestForTeam, bestTotalsSide, formatAmerican } from "../utils/odds";
+
+// NEW: auth + firestore helper
+import { useRouter } from "next/navigation";
+import { useAuth } from "../providers";
+import { addSavedLine } from "../../lib/userData";
 
 type Props = {
   game: Game;
@@ -36,6 +42,10 @@ const edgeSheen = keyframes`
 
 export default function GameCard({ game, onOpen, market }: Props) {
   const [teamA, teamB] = game.teams;
+
+  // NEW: for Save Line
+  const router = useRouter();
+  const { user } = useAuth();
 
   let leftTitle = "";
   let leftSub = "";
@@ -75,6 +85,41 @@ export default function GameCard({ game, onOpen, market }: Props) {
   }
 
   const leftIsBest = leftNumeric > rightNumeric;
+
+  // NEW: minimal Save Line handler
+  const handleSaveLine = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // don’t trigger onOpen
+    if (!user) {
+      router.push("/auth");
+      return;
+    }
+
+    // Build a stable-ish id; fall back if your mock Game lacks eventId
+    const eventId =
+      (game as any).eventId ??
+      (game as any).id ??
+      `${teamA}-${teamB}-${game.commenceTime}`;
+
+    const rawLeague = String((game as any).league ?? (game as any).sportKey ?? "");
+    const league =
+      rawLeague.toUpperCase().includes("NCAA") || rawLeague.toUpperCase() === "NCAAF"
+        ? "CFB"
+        : rawLeague.toUpperCase() || "NFL";
+
+    try {
+      await addSavedLine(user.uid, {
+        id: `${eventId}-${market === "Moneyline" ? "ML" : "TOTAL"}`,
+        league,
+        label: `${teamA} @ ${teamB} — ${market === "Moneyline" ? "ML" : "Total"}`,
+      });
+      // Keep feedback simple for step 1
+      // eslint-disable-next-line no-alert
+      alert("Saved! Check your Account → Saved Lines.");
+    } catch (err: any) {
+      // eslint-disable-next-line no-alert
+      alert(err?.message || "Failed to save line");
+    }
+  };
 
   return (
     <Card
@@ -262,6 +307,18 @@ export default function GameCard({ game, onOpen, market }: Props) {
                 />
               )}
             </Box>
+          </Box>
+
+          {/* NEW: Action row (doesn't interfere with the clickable card) */}
+          <Box sx={{ mt: 1.25, display: "flex", justifyContent: "flex-end" }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleSaveLine}
+              sx={{ borderRadius: 999 }}
+            >
+              Save line
+            </Button>
           </Box>
         </CardContent>
       </CardActionArea>

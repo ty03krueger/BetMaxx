@@ -1,3 +1,4 @@
+// src/app/components/Header.tsx
 "use client";
 import * as React from "react";
 import Link from "next/link";
@@ -12,10 +13,23 @@ import {
   TextField,
   InputAdornment,
   IconButton,
+  Button,
+  Avatar,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Divider,
+  Tooltip,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { alpha } from "@mui/material/styles";
+
+import { useAuth } from "../providers";
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebase";
 
 function AccentX() {
   return (
@@ -64,6 +78,11 @@ export default function Header() {
   const searchParams = useSearchParams();
   const [compact, setCompact] = React.useState(false);
 
+  // Auth
+  const { user, loading } = useAuth();
+  const [menuEl, setMenuEl] = React.useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(menuEl);
+
   // Initialize search with existing ?q= if present
   const initialQ = searchParams.get("q") || "";
   const [q, setQ] = React.useState(initialQ);
@@ -77,7 +96,7 @@ export default function Header() {
 
   const tabs = React.useMemo(
     () => [
-      { label: "NFL", href: "/" },
+      { label: "NFL", href: "/nfl" },
       { label: "CFB", href: "/cfb" },
       { label: "NBA", href: "/nba" },
       { label: "NHL", href: "/nhl" },
@@ -100,13 +119,11 @@ export default function Header() {
   // Helper: update ?q= and dispatch event so pages can react immediately
   const pushQueryAndNotify = React.useCallback(
     (nextQ: string) => {
-      // Update URL query param without scroll
       const sp = new URLSearchParams(Array.from(searchParams.entries()));
       if (nextQ) sp.set("q", nextQ);
       else sp.delete("q");
       router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
 
-      // Fire a custom event apps/pages can listen to
       const ev = new CustomEvent("betmaxx:search", { detail: { q: nextQ } });
       window.dispatchEvent(ev);
     },
@@ -122,6 +139,31 @@ export default function Header() {
     setQ("");
     pushQueryAndNotify("");
   };
+
+  // Auth menu handlers
+  const handleAvatarClick = (e: React.MouseEvent<HTMLElement>) => setMenuEl(e.currentTarget);
+  const handleMenuClose = () => setMenuEl(null);
+
+  // ⬇️ CHANGED: Account → /account
+  const handleGoAccount = () => {
+    handleMenuClose();
+    router.push("/account");
+  };
+
+  const handleSignOut = async () => {
+    handleMenuClose();
+    try {
+      await signOut(auth);
+      router.push("/");
+    } catch {
+      /* optional toast */
+    }
+  };
+
+  const avatarLabel =
+    user?.displayName?.[0]?.toUpperCase() ??
+    user?.email?.[0]?.toUpperCase() ??
+    "U";
 
   return (
     <AppBar
@@ -152,22 +194,31 @@ export default function Header() {
           gap: 2,
         }}
       >
-        {/* Wordmark */}
-        <Typography
-          variant="h6"
+        {/* Wordmark → click to go home */}
+        <Box
+          component={Link}
+          href="/"
+          aria-label="Go to BetMaxx home"
+          prefetch={false}
           sx={{
-            fontWeight: 800,
-            letterSpacing: 0.2,
+            textDecoration: "none",
             display: "flex",
             alignItems: "center",
             userSelect: "none",
+            color: "inherit",
+            "&:hover .bm-word": { opacity: 0.95 },
+            cursor: "pointer",
           }}
         >
-          <Box component="span" sx={{ mr: 0.25 }}>
+          <Typography
+            variant="h6"
+            className="bm-word"
+            sx={{ fontWeight: 800, letterSpacing: 0.2, mr: 0.25 }}
+          >
             BetMax
-          </Box>
+          </Typography>
           <AccentX />
-        </Typography>
+        </Box>
 
         {/* Center Search */}
         <Box
@@ -235,8 +286,8 @@ export default function Header() {
           />
         </Box>
 
-        {/* League tabs (route-driven) */}
-        <Box sx={{ ml: "auto" }}>
+        {/* League tabs (route-driven) + Auth */}
+        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1.25 }}>
           <ToggleButtonGroup
             exclusive
             value={activeHref}
@@ -256,30 +307,101 @@ export default function Header() {
                 disableRipple
                 component={Link}
                 href={t.href}
-                sx={{
-                  px: 1.25,
-                  py: 0.35,
-                  borderRadius: 999,
-                  textTransform: "none",
-                  color: alpha("#fff", 0.8),
-                  border: "none",
-                  "&.Mui-selected": {
-                    color: "#FFD600",
-                    background:
-                      "linear-gradient(180deg, rgba(255,214,0,0.18) 0%, rgba(255,214,0,0.10) 100%)",
-                    border: `1px solid ${alpha("#FFD600", 0.45)}`,
-                    boxShadow:
-                      "0 0 0 2px rgba(255,214,0,0.10), inset 0 0 18px rgba(255,214,0,0.15)",
-                  },
-                  "&:hover": {
-                    backgroundColor: alpha("#FFFFFF", 0.06),
-                  },
-                }}
+                sx={
+                  {
+                    px: 1.25,
+                    py: 0.35,
+                    borderRadius: 999,
+                    textTransform: "none",
+                    color: alpha("#fff", 0.8),
+                    border: "none",
+                    "&.Mui-selected": {
+                      color: "#FFD600",
+                      background:
+                        "linear-gradient(180deg, rgba(255,214,0,0.18) 0%, rgba(255,214,0,0.10) 100%)",
+                      border: `1px solid ${alpha("#FFD600", 0.45)}`,
+                      boxShadow:
+                        "0 0 0 2px rgba(255,214,0,0.10), inset 0 0 18px rgba(255,214,0,0.15)",
+                    },
+                    "&:hover": {
+                      backgroundColor: alpha("#FFFFFF", 0.06),
+                    },
+                  } as any
+                }
               >
                 {t.label}
               </ToggleButton>
             ))}
           </ToggleButtonGroup>
+
+          {/* Auth Area */}
+          {!loading && !user && (
+            <Button
+              component={Link}
+              href="/auth"
+              variant="outlined"
+              size="small"
+              sx={{
+                borderRadius: 999,
+                borderColor: alpha("#FFFFFF", 0.18),
+                color: alpha("#FFFFFF", 0.9),
+                "&:hover": { borderColor: alpha("#FFD600", 0.6) },
+              }}
+            >
+              Sign in
+            </Button>
+          )}
+
+          {!loading && user && (
+            <>
+              <Tooltip title={user.displayName || user.email || "Account"}>
+                <IconButton
+                  onClick={handleAvatarClick}
+                  size="small"
+                  sx={{
+                    p: 0,
+                    ml: 0.25,
+                    borderRadius: 999,
+                    border: `1px solid ${alpha("#FFFFFF", 0.12)}`,
+                  }}
+                >
+                  <Avatar
+                    sx={{
+                      width: 30,
+                      height: 30,
+                      fontSize: 14,
+                      bgcolor: alpha("#FFD600", 0.18),
+                      color: "#FFD600",
+                    }}
+                  >
+                    {avatarLabel}
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={menuEl}
+                open={menuOpen}
+                onClose={handleMenuClose}
+                onClick={handleMenuClose}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+              >
+                <MenuItem onClick={handleGoAccount}>
+                  <ListItemIcon>
+                    <AccountCircleIcon fontSize="small" />
+                  </ListItemIcon>
+                  Account
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleSignOut}>
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  Sign out
+                </MenuItem>
+              </Menu>
+            </>
+          )}
         </Box>
       </Toolbar>
     </AppBar>
