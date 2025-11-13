@@ -29,6 +29,10 @@ import {
 // 🔹 Preferred-books context
 import { useBooks } from "../contexts/BookProvider";
 
+// 🔹 Firestore for outbound click logging
+import { db } from "../../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
 const scaleIn = keyframes`
   from { transform: translate(-50%, -50%) scale(0.96); opacity: 0; }
   to   { transform: translate(-50%, -50%) scale(1.00); opacity: 1; }
@@ -50,6 +54,30 @@ type Props = {
   market: Market;
   /** which list opened the modal; controls which sections render */
   detailView?: DetailView;
+};
+
+// 🔹 Map sportsbook keys → outbound URLs (lowercase keys)
+const BOOK_URLS: Record<string, string> = {
+  betonlineag: "https://www.betonline.ag/sportsbook",
+  betmgm: "https://sports.az.betmgm.com/en/sports",
+  betrivers: "https://www.betrivers.com",
+  betus: "https://www.betus.com.pa/sportsbook",
+  bovada: "https://www.bovada.lv/sports",
+  williamhill_us: "https://www.caesars.com/sportsbook",
+  caesars: "https://www.caesars.com/sportsbook",
+  draftkings: "https://sportsbook.draftkings.com",
+  fanduel: "https://sportsbook.fanduel.com",
+  fanatics: "https://sportsbook.fanatics.com",
+  lowvig: "https://www.lowvig.ag",
+  mybookieag: "https://mybookie.ag/sportsbook",
+  ballybet: "https://www.ballybet.com",
+  betanysports: "https://www.betanysports.eu",
+  betparx: "https://www.pa.betparx.com",
+  espnbet: "https://espnbet.com",
+  fliff: "https://www.fliff.com",
+  hardrockbet: "https://www.hardrock.bet",
+  rebet: "https://www.rebet.com",
+  bet365: "https://www.bet365.com",
 };
 
 export default function GameDetail({
@@ -125,6 +153,57 @@ export default function GameDetail({
   }
 
   const kickoffText = new Date(game.commenceTime).toLocaleString();
+
+  // 🔹 Firestore logging + outbound navigation
+  async function handleBookClick(options: {
+    book: string;
+    market: "ml" | "total";
+    side: string; // teamA / teamB / over / under
+    line?: number;
+    price?: number;
+  }) {
+    const rawKey = options.book || "";
+    const normKey = rawKey.toLowerCase().trim();
+
+    // Try direct mapping; if no URL, still log but skip navigation
+    const url = BOOK_URLS[normKey];
+
+    const sportKey =
+      (game as any).sportKey ||
+      (game as any).league ||
+      (game as any).sport ||
+      "";
+    const eventId =
+      (game as any).eventId ||
+      (game as any).id ||
+      (game as any).gameId ||
+      "";
+
+    try {
+      await addDoc(collection(db, "outboundClicks"), {
+        bookKey: normKey,
+        sportKey,
+        eventId,
+        market: options.market,
+        side: options.side,
+        line: options.line ?? null,
+        price: options.price ?? null,
+        source: "game_detail_modal",
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error("Failed to log outbound click", e);
+      // still try to navigate
+    }
+
+    if (url) {
+      try {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (e) {
+        console.error("Failed to open sportsbook URL", e);
+      }
+    }
+  }
 
   return (
     <Modal
@@ -238,7 +317,9 @@ export default function GameDetail({
                   const best = bestForTeam(game.books, teamA);
                   return best ? (
                     <BestChip
-                      label={`Best: ${formatAmerican(best.price)} · ${best.book}`}
+                      label={`Best: ${formatAmerican(
+                        best.price
+                      )} · ${best.book}`}
                     />
                   ) : null;
                 })()}
@@ -253,11 +334,20 @@ export default function GameDetail({
                     <ListItem
                       key={`${row.book}-A-${idx}`}
                       disableGutters
+                      onClick={() =>
+                        handleBookClick({
+                          book: row.book,
+                          market: "ml",
+                          side: "teamA",
+                          price: row.price,
+                        })
+                      }
                       sx={{
                         px: 1.25,
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
+                        cursor: "pointer",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)" // absolute best line
@@ -315,7 +405,9 @@ export default function GameDetail({
                   const best = bestForTeam(game.books, teamB);
                   return best ? (
                     <BestChip
-                      label={`Best: ${formatAmerican(best.price)} · ${best.book}`}
+                      label={`Best: ${formatAmerican(
+                        best.price
+                      )} · ${best.book}`}
                     />
                   ) : null;
                 })()}
@@ -330,11 +422,20 @@ export default function GameDetail({
                     <ListItem
                       key={`${row.book}-B-${idx}`}
                       disableGutters
+                      onClick={() =>
+                        handleBookClick({
+                          book: row.book,
+                          market: "ml",
+                          side: "teamB",
+                          price: row.price,
+                        })
+                      }
                       sx={{
                         px: 1.25,
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
+                        cursor: "pointer",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)"
@@ -417,11 +518,21 @@ export default function GameDetail({
                     <ListItem
                       key={`${row.book}-O-${idx}`}
                       disableGutters
+                      onClick={() =>
+                        handleBookClick({
+                          book: row.book,
+                          market: "total",
+                          side: "over",
+                          line: row.line,
+                          price: row.price,
+                        })
+                      }
                       sx={{
                         px: 1.25,
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
+                        cursor: "pointer",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)"
@@ -496,11 +607,21 @@ export default function GameDetail({
                     <ListItem
                       key={`${row.book}-U-${idx}`}
                       disableGutters
+                      onClick={() =>
+                        handleBookClick({
+                          book: row.book,
+                          market: "total",
+                          side: "under",
+                          line: row.line,
+                          price: row.price,
+                        })
+                      }
                       sx={{
                         px: 1.25,
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
+                        cursor: "pointer",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)"
@@ -548,12 +669,20 @@ export default function GameDetail({
         {/* ───────────────────────── Anytime TD (placeholder) ───────────────────── */}
         {view === "all" && (
           <>
-            <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 2 }} />
+            <Divider
+              sx={{ borderColor: "rgba(255,255,255,0.12)", my: 2 }}
+            />
             <Box sx={{ mb: 0.5 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 700, mb: 1 }}
+              >
                 Anytime Touchdown
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.85, mb: 1 }}>
+              <Typography
+                variant="body2"
+                sx={{ opacity: 0.85, mb: 1 }}
+              >
                 Best-price view coming soon.
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -568,4 +697,3 @@ export default function GameDetail({
     </Modal>
   );
 }
-
