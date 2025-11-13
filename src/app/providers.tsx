@@ -10,8 +10,11 @@ import Header from "./components/Header";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../firebase"; // ✅ ensure /src/firebase.ts exists
 
-// ⬇️ NEW: shared modal provider
+// Shared modal provider
 import GameDialogProvider from "./components/GameDialogProvider";
+
+// 🔹 Books provider (preferred sportsbooks, per user)
+import { BooksProvider } from "../app/contexts/BookProvider";
 
 // --- Auth Context ---
 type AuthCtx = { user: User | null; loading: boolean };
@@ -38,13 +41,16 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthContext.Provider value={{ user, loading }}>
-        <Header />
-        {/* ⬇️ Wrap the app so any page can open the shared GameDetail modal */}
-        <GameDialogProvider>
-          <Container maxWidth="lg" sx={{ py: 4 }}>
-            {children}
-          </Container>
-        </GameDialogProvider>
+        {/* 🔹 Per-user preferred books context */}
+        <BooksProvider user={user}>
+          <Header />
+          {/* Shared GameDetail modal + page content */}
+          <GameDialogProvider>
+            <Container maxWidth="lg" sx={{ py: 4 }}>
+              {children}
+            </Container>
+          </GameDialogProvider>
+        </BooksProvider>
       </AuthContext.Provider>
     </ThemeProvider>
   );

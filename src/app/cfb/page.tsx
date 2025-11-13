@@ -1,13 +1,27 @@
+// src/app/cfb/page.tsx
 "use client";
 import * as React from "react";
 import { useMemo, useState, useEffect } from "react";
 import {
-  Stack, Typography, Button, ButtonGroup, Alert, Skeleton, IconButton, Card, CardContent, Box,
-  Chip, Popover, FormGroup, FormControlLabel, Checkbox, Divider,
+  Stack,
+  Typography,
+  Button,
+  ButtonGroup,
+  Alert,
+  Skeleton,
+  IconButton,
+  Card,
+  CardContent,
+  Box,
+  Chip,
+  Popover,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Divider,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import GameCard from "../components/GameCard";
-import GameDetail from "../components/GameDetail";
 import { useOdds } from "../hooks/useOdds";
 import type { Game } from "../api/odds/route";
 import { useSearchParams } from "next/navigation";
@@ -22,11 +36,13 @@ import {
 // NEW: import isFinal (global helper with 6h CFB cutoff)
 import { isFinal } from "@/app/utils/isFinal";
 
+// 🔹 NEW: shared dialog controller (same as NFL)
+import { useGameDialog } from "../components/GameDialogProvider";
+
 type View = "all" | "ml" | "ou";
 type Market = "Moneyline" | "Total";
 
 export default function CollegeFootballPage() {
-  const [selected, setSelected] = useState<Game | null>(null);
   const [view, setView] = useState<View>("all");
 
   const { games, loading, error, reload } = useOdds({ sport: "ncaaf" });
@@ -47,14 +63,17 @@ export default function CollegeFootballPage() {
 
   // ---- Conference filter state ----
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [selectedConfs, setSelectedConfs] = useState<Set<Conference>>(new Set());
+  const [selectedConfs, setSelectedConfs] = useState<Set<Conference>>(
+    new Set()
+  );
 
-  const handleOpenConfs = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleOpenConfs = (e: React.MouseEvent<HTMLElement>) =>
+    setAnchorEl(e.currentTarget);
   const handleCloseConfs = () => setAnchorEl(null);
   const open = Boolean(anchorEl);
 
   const toggleConf = (conf: Conference) => {
-    setSelectedConfs(prev => {
+    setSelectedConfs((prev) => {
       const next = new Set(prev);
       if (next.has(conf)) next.delete(conf);
       else next.add(conf);
@@ -65,7 +84,8 @@ export default function CollegeFootballPage() {
   const clearConfs = () => setSelectedConfs(new Set());
   const selectP5 = () => setSelectedConfs(new Set(Array.from(POWER5)));
   const selectG5 = () => setSelectedConfs(new Set(Array.from(GROUP5)));
-  const selectInd = () => setSelectedConfs(new Set<Conference>(["Independents"]));
+  const selectInd = () =>
+    setSelectedConfs(new Set<Conference>(["Independents"]));
 
   // ---- filtering pipeline ----
   // 0) drop finished games first (uses isFinal with 6h CFB cutoff)
@@ -89,14 +109,14 @@ export default function CollegeFootballPage() {
   // 2) conference filter (keep if either team matches)
   const filteredGames: Game[] = useMemo(() => {
     if (selectedConfs.size === 0) return searchedGames;
-    return searchedGames.map((g) => {
-      return { ...g };
-    }).filter((g) => {
-      const [away, home] = g.teams;
-      const ca = getConferenceForTeam(away);
-      const ch = getConferenceForTeam(home);
-      return selectedConfs.has(ca) || selectedConfs.has(ch);
-    });
+    return searchedGames
+      .map((g) => ({ ...g }))
+      .filter((g) => {
+        const [away, home] = g.teams;
+        const ca = getConferenceForTeam(away);
+        const ch = getConferenceForTeam(home);
+        return selectedConfs.has(ca) || selectedConfs.has(ch);
+      });
   }, [searchedGames, selectedConfs]);
 
   const market: Market = useMemo(
@@ -106,14 +126,26 @@ export default function CollegeFootballPage() {
 
   const title = useMemo(() => {
     const base =
-      view === "all" ? "CFB · All Games" :
-      view === "ml"  ? "CFB · Moneyline" :
-                       "CFB · Over/Under";
+      view === "all"
+        ? "CFB · All Games"
+        : view === "ml"
+        ? "CFB · Moneyline"
+        : "CFB · Over/Under";
     const parts = [base];
     if (query) parts.push(`Search: “${query}”`);
     if (selectedConfs.size > 0) parts.push(`${selectedConfs.size} conf`);
     return parts.join(" · ");
   }, [view, query, selectedConfs]);
+
+  // 🔹 Shared modal controller (same as NFL)
+  const { openWithGame } = useGameDialog();
+
+  const handleOpen = React.useCallback(
+    (g: Game) => {
+      openWithGame(g, { detailView: view, market });
+    },
+    [openWithGame, view, market]
+  );
 
   return (
     <Stack spacing={2}>
@@ -127,7 +159,11 @@ export default function CollegeFootballPage() {
           {/* Conference Filters */}
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip
-              label={selectedConfs.size ? `Conference (${selectedConfs.size})` : "Conference"}
+              label={
+                selectedConfs.size
+                  ? `Conference (${selectedConfs.size})`
+                  : "Conference"
+              }
               onClick={handleOpenConfs}
               variant="outlined"
               color={selectedConfs.size ? "primary" : "default"}
@@ -200,10 +236,18 @@ export default function CollegeFootballPage() {
           </FormGroup>
           <Divider sx={{ my: 1.5 }} />
           <Stack direction="row" spacing={1}>
-            <Button size="small" variant="outlined" onClick={selectP5}>P5</Button>
-            <Button size="small" variant="outlined" onClick={selectG5}>G5</Button>
-            <Button size="small" variant="outlined" onClick={selectInd}>Ind</Button>
-            <Button size="small" onClick={clearConfs}>Clear</Button>
+            <Button size="small" variant="outlined" onClick={selectP5}>
+              P5
+            </Button>
+            <Button size="small" variant="outlined" onClick={selectG5}>
+              G5
+            </Button>
+            <Button size="small" variant="outlined" onClick={selectInd}>
+              Ind
+            </Button>
+            <Button size="small" onClick={clearConfs}>
+              Clear
+            </Button>
           </Stack>
         </Box>
       </Popover>
@@ -222,29 +266,31 @@ export default function CollegeFootballPage() {
         <Stack spacing={1.5}>
           {filteredGames.length === 0 && (
             <Alert severity="info">
-              No games match your search/filters. Try clearing Conference or search.
+              No games match your search/filters. Try clearing Conference or
+              search.
             </Alert>
           )}
 
           {view === "all" &&
             filteredGames.map((g) => (
-              <AllGamesCard key={g.eventId} game={g} onOpen={() => setSelected(g)} />
+              <AllGamesCard
+                key={g.eventId}
+                game={g}
+                onOpen={() => handleOpen(g)}
+              />
             ))}
 
           {view !== "all" &&
             filteredGames.map((g) => (
-              <GameCard key={g.eventId} game={g} onOpen={setSelected} market={market} />
+              <GameCard
+                key={g.eventId}
+                game={g}
+                onOpen={handleOpen}
+                market={market}
+              />
             ))}
         </Stack>
       )}
-
-      <GameDetail
-        game={selected}
-        open={Boolean(selected)}
-        onClose={() => setSelected(null)}
-        market={market}
-        detailView={view}
-      />
     </Stack>
   );
 }
@@ -268,7 +314,12 @@ function AllGamesCard({
   return (
     <Card variant="outlined" sx={{ borderRadius: 4 }}>
       <CardContent>
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          gap={2}
+        >
           <Box>
             <Typography variant="overline" sx={{ opacity: 0.75 }}>
               {kickoff}

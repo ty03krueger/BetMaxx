@@ -242,15 +242,15 @@ export default function HomePage() {
             <Stack direction={{ xs: "column", md: "row" }} alignItems="center" justifyContent="space-between" spacing={2}>
               <Stack spacing={0.5}>
                 <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                  Phase 2: Accounts, Favorites & Props
+                  Customize Your Board, Maxx Your Bets Effortlessly
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.8 }}>
                   Personalize your board, track markets you care about, and catch shifts in real time.
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={2}>
-                <Button component={Link} href="/nfl" variant="contained" sx={{ borderRadius: 999 }}>
-                  Jump to Odds
+                <Button component={Link} href="/account" variant="contained" sx={{ borderRadius: 999 }}>
+                  My Account
                 </Button>
                 <Button component={Link} href="/nba" variant="outlined" sx={{ borderRadius: 999 }}>
                   See What’s Next

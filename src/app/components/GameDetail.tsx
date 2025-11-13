@@ -11,8 +11,12 @@ import {
   ListItemText,
   Chip,
   Divider,
+  Button,
+  ButtonGroup,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { keyframes } from "@mui/system";
+
 import type { Game } from "../data/mockOdds";
 import {
   sortedForTeam,
@@ -21,7 +25,9 @@ import {
   sortedTotalsSide,
   bestTotalsSide,
 } from "../utils/odds";
-import { keyframes } from "@mui/system";
+
+// 🔹 Preferred-books context
+import { useBooks } from "../contexts/BookProvider";
 
 const scaleIn = keyframes`
   from { transform: translate(-50%, -50%) scale(0.96); opacity: 0; }
@@ -35,13 +41,14 @@ const ringOnce = keyframes`
 
 type Market = "Moneyline" | "Total";
 type DetailView = "all" | "ml" | "ou";
+type BookMode = "all" | "mine";
 
 type Props = {
   game: Game | null;
   open: boolean;
   onClose: () => void;
   market: Market;
-  /** NEW: which list opened the modal; controls which sections render */
+  /** which list opened the modal; controls which sections render */
   detailView?: DetailView;
 };
 
@@ -54,12 +61,18 @@ export default function GameDetail({
 }: Props) {
   if (!game) return null;
 
-  // derive active view:
-  // - if parent passes detailView, use it
-  // - otherwise fall back to market (backward-compatible)
   const view: DetailView = detailView ?? (market === "Total" ? "ou" : "ml");
-
   const [teamA, teamB] = game.teams;
+
+  // 🔹 Which books to show: all vs my books
+  const [bookMode, setBookMode] = React.useState<BookMode>("all");
+
+  // 🔹 Preferred books from global context
+  const { preferredBooks } = useBooks();
+  const preferredSet = React.useMemo(
+    () => new Set(preferredBooks.map((b) => b.toLowerCase().trim())),
+    [preferredBooks]
+  );
 
   function BestChip({ label }: { label: string }) {
     return (
@@ -81,6 +94,38 @@ export default function GameDetail({
     );
   }
 
+  // 🔹 Base sorted rows (pure odds sort)
+  const mlRowsA = React.useMemo(
+    () => sortedForTeam(game.books, teamA),
+    [game.books, teamA]
+  );
+  const mlRowsB = React.useMemo(
+    () => sortedForTeam(game.books, teamB),
+    [game.books, teamB]
+  );
+  const overRows = React.useMemo(
+    () => sortedTotalsSide(game.totals, "Over"),
+    [game.totals]
+  );
+  const underRows = React.useMemo(
+    () => sortedTotalsSide(game.totals, "Under"),
+    [game.totals]
+  );
+
+  // 🔹 Filter by book mode: keep "true best" (index 0) + any preferred books
+  function rowsForMode<T extends { book: string }>(rows: T[]): T[] {
+    if (bookMode === "all") return rows;
+
+    if (!rows.length) return rows;
+    const [best, ...rest] = rows;
+    const filteredPreferred = rest.filter((r) =>
+      preferredSet.has(r.book.toLowerCase().trim())
+    );
+    return [best, ...filteredPreferred];
+  }
+
+  const kickoffText = new Date(game.commenceTime).toLocaleString();
+
   return (
     <Modal
       open={open}
@@ -93,8 +138,6 @@ export default function GameDetail({
             WebkitBackdropFilter: "blur(8px)",
             position: "fixed",
             inset: 0,
-
-            // ✅ Static gold vignette (instant)
             "&::before": {
               content: '""',
               position: "absolute",
@@ -106,8 +149,6 @@ export default function GameDetail({
               `,
               opacity: 1,
             },
-
-            // ✅ Static diagonal gold decal
             "&::after": {
               content: '""',
               position: "absolute",
@@ -155,9 +196,31 @@ export default function GameDetail({
           </IconButton>
         </Stack>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {new Date(game.commenceTime).toLocaleString()}
+        <Typography variant="body2" color="text.secondary">
+          {kickoffText}
         </Typography>
+
+        {/* Book mode toggle */}
+        <Stack
+          direction="row"
+          justifyContent="flex-end"
+          sx={{ mt: 1, mb: 2 }}
+        >
+          <ButtonGroup size="small">
+            <Button
+              variant={bookMode === "all" ? "contained" : "outlined"}
+              onClick={() => setBookMode("all")}
+            >
+              All books
+            </Button>
+            <Button
+              variant={bookMode === "mine" ? "contained" : "outlined"}
+              onClick={() => setBookMode("mine")}
+            >
+              My books
+            </Button>
+          </ButtonGroup>
+        </Stack>
 
         {/* ───────────────────────── Moneyline (all + ml) ───────────────────────── */}
         {(view === "all" || view === "ml") && (
@@ -182,47 +245,58 @@ export default function GameDetail({
               </Stack>
 
               <List dense disablePadding>
-                {sortedForTeam(game.books, teamA).map((row, idx) => (
-                  <ListItem
-                    key={`${row.book}-A-${idx}`}
-                    disableGutters
-                    sx={{
-                      px: 1.25,
-                      py: 1,
-                      mb: 0.75,
-                      borderRadius: 2,
-                      bgcolor:
-                        idx === 0
-                          ? "rgba(255,214,0,0.10)"
-                          : "rgba(255,255,255,0.03)",
-                      transition: "all .18s ease",
-                      "&:hover": {
+                {rowsForMode(mlRowsA).map((row, idx) => {
+                  const isPreferred = preferredSet.has(
+                    row.book.toLowerCase().trim()
+                  );
+                  return (
+                    <ListItem
+                      key={`${row.book}-A-${idx}`}
+                      disableGutters
+                      sx={{
+                        px: 1.25,
+                        py: 1,
+                        mb: 0.75,
+                        borderRadius: 2,
                         bgcolor:
                           idx === 0
-                            ? "rgba(255,214,0,0.15)"
-                            : "rgba(255,255,255,0.06)",
-                        transform: "translateY(-1px)",
-                      },
-                    }}
-                    secondaryAction={
-                      <Typography
-                        sx={{
-                          fontWeight: idx === 0 ? 800 : 500,
-                          color: "primary.main",
-                        }}
-                      >
-                        {formatAmerican(row.price)}
-                      </Typography>
-                    }
-                  >
-                    <ListItemText
-                      primary={row.book}
-                      primaryTypographyProps={{
-                        fontWeight: idx === 0 ? 800 : 500,
+                            ? "rgba(255,214,0,0.10)" // absolute best line
+                            : "rgba(255,255,255,0.03)",
+                        border:
+                          isPreferred && idx !== 0
+                            ? "1px solid rgba(255,214,0,0.35)"
+                            : "1px solid transparent",
+                        transition: "all .18s ease",
+                        "&:hover": {
+                          bgcolor:
+                            idx === 0
+                              ? "rgba(255,214,0,0.15)"
+                              : "rgba(255,255,255,0.06)",
+                          transform: "translateY(-1px)",
+                        },
                       }}
-                    />
-                  </ListItem>
-                ))}
+                      secondaryAction={
+                        <Typography
+                          sx={{
+                            fontWeight:
+                              idx === 0 ? 800 : isPreferred ? 700 : 500,
+                            color: "primary.main",
+                          }}
+                        >
+                          {formatAmerican(row.price)}
+                        </Typography>
+                      }
+                    >
+                      <ListItemText
+                        primary={row.book}
+                        primaryTypographyProps={{
+                          fontWeight:
+                            idx === 0 ? 800 : isPreferred ? 700 : 500,
+                        }}
+                      />
+                    </ListItem>
+                  );
+                })}
               </List>
             </Box>
 
@@ -248,54 +322,67 @@ export default function GameDetail({
               </Stack>
 
               <List dense disablePadding>
-                {sortedForTeam(game.books, teamB).map((row, idx) => (
-                  <ListItem
-                    key={`${row.book}-B-${idx}`}
-                    disableGutters
-                    sx={{
-                      px: 1.25,
-                      py: 1,
-                      mb: 0.75,
-                      borderRadius: 2,
-                      bgcolor:
-                        idx === 0
-                          ? "rgba(255,214,0,0.10)"
-                          : "rgba(255,255,255,0.03)",
-                      transition: "all .18s ease",
-                      "&:hover": {
+                {rowsForMode(mlRowsB).map((row, idx) => {
+                  const isPreferred = preferredSet.has(
+                    row.book.toLowerCase().trim()
+                  );
+                  return (
+                    <ListItem
+                      key={`${row.book}-B-${idx}`}
+                      disableGutters
+                      sx={{
+                        px: 1.25,
+                        py: 1,
+                        mb: 0.75,
+                        borderRadius: 2,
                         bgcolor:
                           idx === 0
-                            ? "rgba(255,214,0,0.15)"
-                            : "rgba(255,255,255,0.06)",
-                        transform: "translateY(-1px)",
-                      },
-                    }}
-                    secondaryAction={
-                      <Typography
-                        sx={{
-                          fontWeight: idx === 0 ? 800 : 500,
-                          color: "primary.main",
-                        }}
-                      >
-                        {formatAmerican(row.price)}
-                      </Typography>
-                    }
-                  >
-                    <ListItemText
-                      primary={row.book}
-                      primaryTypographyProps={{
-                        fontWeight: idx === 0 ? 800 : 500,
+                            ? "rgba(255,214,0,0.10)"
+                            : "rgba(255,255,255,0.03)",
+                        border:
+                          isPreferred && idx !== 0
+                            ? "1px solid rgba(255,214,0,0.35)"
+                            : "1px solid transparent",
+                        transition: "all .18s ease",
+                        "&:hover": {
+                          bgcolor:
+                            idx === 0
+                              ? "rgba(255,214,0,0.15)"
+                              : "rgba(255,255,255,0.06)",
+                          transform: "translateY(-1px)",
+                        },
                       }}
-                    />
-                  </ListItem>
-                ))}
+                      secondaryAction={
+                        <Typography
+                          sx={{
+                            fontWeight:
+                              idx === 0 ? 800 : isPreferred ? 700 : 500,
+                            color: "primary.main",
+                          }}
+                        >
+                          {formatAmerican(row.price)}
+                        </Typography>
+                      }
+                    >
+                      <ListItemText
+                        primary={row.book}
+                        primaryTypographyProps={{
+                          fontWeight:
+                            idx === 0 ? 800 : isPreferred ? 700 : 500,
+                        }}
+                      />
+                    </ListItem>
+                  );
+                })}
               </List>
             </Box>
           </Stack>
         )}
 
         {/* Divider between ML and Totals only when showing both (view === "all") */}
-        {view === "all" && <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 2 }} />}
+        {view === "all" && (
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 2 }} />
+        )}
 
         {/* ───────────────────────── Totals (all + ou) ─────────────────────────── */}
         {(view === "all" || view === "ou") && (
@@ -322,47 +409,58 @@ export default function GameDetail({
               </Stack>
 
               <List dense disablePadding>
-                {sortedTotalsSide(game.totals, "Over").map((row, idx) => (
-                  <ListItem
-                    key={`${row.book}-O-${idx}`}
-                    disableGutters
-                    sx={{
-                      px: 1.25,
-                      py: 1,
-                      mb: 0.75,
-                      borderRadius: 2,
-                      bgcolor:
-                        idx === 0
-                          ? "rgba(255,214,0,0.10)"
-                          : "rgba(255,255,255,0.03)",
-                      transition: "all .18s ease",
-                      "&:hover": {
+                {rowsForMode(overRows).map((row, idx) => {
+                  const isPreferred = preferredSet.has(
+                    row.book.toLowerCase().trim()
+                  );
+                  return (
+                    <ListItem
+                      key={`${row.book}-O-${idx}`}
+                      disableGutters
+                      sx={{
+                        px: 1.25,
+                        py: 1,
+                        mb: 0.75,
+                        borderRadius: 2,
                         bgcolor:
                           idx === 0
-                            ? "rgba(255,214,0,0.15)"
-                            : "rgba(255,255,255,0.06)",
-                        transform: "translateY(-1px)",
-                      },
-                    }}
-                    secondaryAction={
-                      <Typography
-                        sx={{
-                          fontWeight: idx === 0 ? 800 : 500,
-                          color: "primary.main",
-                        }}
-                      >
-                        O {row.line} {formatAmerican(row.price)}
-                      </Typography>
-                    }
-                  >
-                    <ListItemText
-                      primary={row.book}
-                      primaryTypographyProps={{
-                        fontWeight: idx === 0 ? 800 : 500,
+                            ? "rgba(255,214,0,0.10)"
+                            : "rgba(255,255,255,0.03)",
+                        border:
+                          isPreferred && idx !== 0
+                            ? "1px solid rgba(255,214,0,0.35)"
+                            : "1px solid transparent",
+                        transition: "all .18s ease",
+                        "&:hover": {
+                          bgcolor:
+                            idx === 0
+                              ? "rgba(255,214,0,0.15)"
+                              : "rgba(255,255,255,0.06)",
+                          transform: "translateY(-1px)",
+                        },
                       }}
-                    />
-                  </ListItem>
-                ))}
+                      secondaryAction={
+                        <Typography
+                          sx={{
+                            fontWeight:
+                              idx === 0 ? 800 : isPreferred ? 700 : 500,
+                            color: "primary.main",
+                          }}
+                        >
+                          O {row.line} {formatAmerican(row.price)}
+                        </Typography>
+                      }
+                    >
+                      <ListItemText
+                        primary={row.book}
+                        primaryTypographyProps={{
+                          fontWeight:
+                            idx === 0 ? 800 : isPreferred ? 700 : 500,
+                        }}
+                      />
+                    </ListItem>
+                  );
+                })}
               </List>
             </Box>
 
@@ -390,47 +488,58 @@ export default function GameDetail({
               </Stack>
 
               <List dense disablePadding>
-                {sortedTotalsSide(game.totals, "Under").map((row, idx) => (
-                  <ListItem
-                    key={`${row.book}-U-${idx}`}
-                    disableGutters
-                    sx={{
-                      px: 1.25,
-                      py: 1,
-                      mb: 0.75,
-                      borderRadius: 2,
-                      bgcolor:
-                        idx === 0
-                          ? "rgba(255,214,0,0.10)"
-                          : "rgba(255,255,255,0.03)",
-                      transition: "all .18s ease",
-                      "&:hover": {
+                {rowsForMode(underRows).map((row, idx) => {
+                  const isPreferred = preferredSet.has(
+                    row.book.toLowerCase().trim()
+                  );
+                  return (
+                    <ListItem
+                      key={`${row.book}-U-${idx}`}
+                      disableGutters
+                      sx={{
+                        px: 1.25,
+                        py: 1,
+                        mb: 0.75,
+                        borderRadius: 2,
                         bgcolor:
                           idx === 0
-                            ? "rgba(255,214,0,0.15)"
-                            : "rgba(255,255,255,0.06)",
-                        transform: "translateY(-1px)",
-                      },
-                    }}
-                    secondaryAction={
-                      <Typography
-                        sx={{
-                          fontWeight: idx === 0 ? 800 : 500,
-                          color: "primary.main",
-                        }}
-                      >
-                        U {row.line} {formatAmerican(row.price)}
-                      </Typography>
-                    }
-                  >
-                    <ListItemText
-                      primary={row.book}
-                      primaryTypographyProps={{
-                        fontWeight: idx === 0 ? 800 : 500,
+                            ? "rgba(255,214,0,0.10)"
+                            : "rgba(255,255,255,0.03)",
+                        border:
+                          isPreferred && idx !== 0
+                            ? "1px solid rgba(255,214,0,0.35)"
+                            : "1px solid transparent",
+                        transition: "all .18s ease",
+                        "&:hover": {
+                          bgcolor:
+                            idx === 0
+                              ? "rgba(255,214,0,0.15)"
+                              : "rgba(255,255,255,0.06)",
+                          transform: "translateY(-1px)",
+                        },
                       }}
-                    />
-                  </ListItem>
-                ))}
+                      secondaryAction={
+                        <Typography
+                          sx={{
+                            fontWeight:
+                              idx === 0 ? 800 : isPreferred ? 700 : 500,
+                            color: "primary.main",
+                          }}
+                        >
+                          U {row.line} {formatAmerican(row.price)}
+                        </Typography>
+                      }
+                    >
+                      <ListItemText
+                        primary={row.book}
+                        primaryTypographyProps={{
+                          fontWeight:
+                            idx === 0 ? 800 : isPreferred ? 700 : 500,
+                        }}
+                      />
+                    </ListItem>
+                  );
+                })}
               </List>
             </Box>
           </Stack>
@@ -459,3 +568,4 @@ export default function GameDetail({
     </Modal>
   );
 }
+
