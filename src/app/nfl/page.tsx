@@ -3,7 +3,16 @@
 import * as React from "react";
 import { useMemo, useState, useEffect } from "react";
 import {
-  Stack, Typography, Button, ButtonGroup, Alert, Skeleton, IconButton, Card, CardContent, Box,
+  Stack,
+  Typography,
+  Button,
+  ButtonGroup,
+  Alert,
+  Skeleton,
+  IconButton,
+  Card,
+  CardContent,
+  Box,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import GameCard from "../components/GameCard";
@@ -22,7 +31,7 @@ export default function Home() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState<string>(searchParams.get("q") || "");
 
-  const { openWithGame } = useGameDialog(); // ⬅️ new
+  const { openWithGame } = useGameDialog();
 
   useEffect(() => {
     setQuery(searchParams.get("q") || "");
@@ -56,41 +65,94 @@ export default function Home() {
 
   const title = useMemo(() => {
     const base =
-      view === "all" ? "NFL · All Games" :
-      view === "ml"  ? "NFL · Moneyline" :
-                       "NFL · Over/Under";
+      view === "all"
+        ? "NFL · All Games"
+        : view === "ml"
+        ? "NFL · Moneyline"
+        : "NFL · Over/Under";
     return query ? `${base} · Search: “${query}”` : base;
   }, [view, query]);
 
-  // Open the shared modal with the correct view/market
-  const handleOpen = React.useCallback((g: Game) => {
-    openWithGame(g, { detailView: view, market });
-  }, [openWithGame, view, market]);
+  const handleOpen = React.useCallback(
+    (g: Game) => {
+      openWithGame(g, { detailView: view, market });
+    },
+    [openWithGame, view, market]
+  );
 
   return (
     <Stack spacing={2}>
-      {/* Header row */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          {title}
-        </Typography>
-
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <ButtonGroup>
-            <Button variant={view === "all" ? "contained" : "outlined"} onClick={() => setView("all")} aria-label="All Games">
-              All Games
-            </Button>
-            <Button variant={view === "ml" ? "contained" : "outlined"} onClick={() => setView("ml")} aria-label="Moneyline">
-              ML
-            </Button>
-            <Button variant={view === "ou" ? "contained" : "outlined"} onClick={() => setView("ou")} aria-label="Over/Under">
-              O/U
-            </Button>
-          </ButtonGroup>
+      {/* Header + filters */}
+      <Stack spacing={1.5}>
+        {/* Top row: title + refresh */}
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ gap: 1 }}
+        >
+          {/* Desktop: full title; Mobile: simple "NFL" */}
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              display: { xs: "none", sm: "block" },
+            }}
+          >
+            {title}
+          </Typography>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              display: { xs: "block", sm: "none" },
+            }}
+          >
+            NFL
+          </Typography>
 
           <IconButton aria-label="refresh" onClick={reload}>
             <RefreshIcon />
           </IconButton>
+        </Stack>
+
+        {/* Second row: view toggles (under title on mobile) */}
+        <Stack
+          direction="row"
+          justifyContent={{ xs: "center", sm: "flex-start" }}
+        >
+          <ButtonGroup
+            fullWidth
+            sx={{
+              width: { xs: "100%", sm: "auto" },
+              "& .MuiButton-root": {
+                flex: { xs: 1, sm: "initial" },
+                whiteSpace: "nowrap",
+              },
+            }}
+          >
+            <Button
+              variant={view === "all" ? "contained" : "outlined"}
+              onClick={() => setView("all")}
+              aria-label="All Games"
+            >
+              All Games
+            </Button>
+            <Button
+              variant={view === "ml" ? "contained" : "outlined"}
+              onClick={() => setView("ml")}
+              aria-label="Moneyline"
+            >
+              Moneyline
+            </Button>
+            <Button
+              variant={view === "ou" ? "contained" : "outlined"}
+              onClick={() => setView("ou")}
+              aria-label="Over/Under"
+            >
+              O/U
+            </Button>
+          </ButtonGroup>
         </Stack>
       </Stack>
 
@@ -109,18 +171,28 @@ export default function Home() {
         <Stack spacing={1.5}>
           {filteredGames.length === 0 && (
             <Alert severity="info">
-              No games match your filters. Try a team name (e.g., “Eagles” or “Chiefs”).
+              No games match your filters. Try a team name (e.g., “Eagles” or
+              “Chiefs”).
             </Alert>
           )}
 
           {view === "all" &&
             filteredGames.map((g) => (
-              <AllGamesCard key={g.eventId} game={g} onOpen={() => handleOpen(g)} />
+              <AllGamesCard
+                key={g.eventId}
+                game={g}
+                onOpen={() => handleOpen(g)}
+              />
             ))}
 
           {view !== "all" &&
             filteredGames.map((g) => (
-              <GameCard key={g.eventId} game={g} onOpen={handleOpen} market={market} />
+              <GameCard
+                key={g.eventId}
+                game={g}
+                onOpen={handleOpen}
+                market={market}
+              />
             ))}
         </Stack>
       )}
@@ -129,7 +201,13 @@ export default function Home() {
 }
 
 /** Minimal card for the “All Games” view: matchup + kickoff only */
-function AllGamesCard({ game, onOpen }: { game: Game; onOpen: () => void }) {
+function AllGamesCard({
+  game,
+  onOpen,
+}: {
+  game: Game;
+  onOpen: () => void;
+}) {
   const [away, home] = game.teams;
   const kickoff = new Date(game.commenceTime).toLocaleString(undefined, {
     weekday: "short",
@@ -142,7 +220,12 @@ function AllGamesCard({ game, onOpen }: { game: Game; onOpen: () => void }) {
   return (
     <Card variant="outlined" sx={{ borderRadius: 4 }}>
       <CardContent>
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
+        <Box
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          gap={2}
+        >
           <Box>
             <Typography variant="overline" sx={{ opacity: 0.75 }}>
               {kickoff}
@@ -152,7 +235,12 @@ function AllGamesCard({ game, onOpen }: { game: Game; onOpen: () => void }) {
             </Typography>
           </Box>
 
-          <Button variant="contained" onClick={onOpen} sx={{ borderRadius: 999 }} aria-label={`View ${away} at ${home}`}>
+          <Button
+            variant="contained"
+            onClick={onOpen}
+            sx={{ borderRadius: 999 }}
+            aria-label={`View ${away} at ${home}`}
+          >
             View Game
           </Button>
         </Box>

@@ -33,10 +33,7 @@ import {
   getConferenceForTeam,
 } from "../data/cfbConferences";
 
-// NEW: import isFinal (global helper with 6h CFB cutoff)
 import { isFinal } from "@/app/utils/isFinal";
-
-// 🔹 NEW: shared dialog controller (same as NFL)
 import { useGameDialog } from "../components/GameDialogProvider";
 
 type View = "all" | "ml" | "ou";
@@ -44,7 +41,6 @@ type Market = "Moneyline" | "Total";
 
 export default function CollegeFootballPage() {
   const [view, setView] = useState<View>("all");
-
   const { games, loading, error, reload } = useOdds({ sport: "ncaaf" });
 
   // ---- Search wiring ----
@@ -70,7 +66,7 @@ export default function CollegeFootballPage() {
   const handleOpenConfs = (e: React.MouseEvent<HTMLElement>) =>
     setAnchorEl(e.currentTarget);
   const handleCloseConfs = () => setAnchorEl(null);
-  const open = Boolean(anchorEl);
+  const popoverOpen = Boolean(anchorEl);
 
   const toggleConf = (conf: Conference) => {
     setSelectedConfs((prev) => {
@@ -88,13 +84,11 @@ export default function CollegeFootballPage() {
     setSelectedConfs(new Set<Conference>(["Independents"]));
 
   // ---- filtering pipeline ----
-  // 0) drop finished games first (uses isFinal with 6h CFB cutoff)
   const activeGames: Game[] = useMemo(() => {
     if (!games) return [];
     return games.filter((g) => !isFinal(g));
   }, [games]);
 
-  // 1) search filter
   const searchedGames: Game[] = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return activeGames;
@@ -106,7 +100,6 @@ export default function CollegeFootballPage() {
     });
   }, [activeGames, query]);
 
-  // 2) conference filter (keep if either team matches)
   const filteredGames: Game[] = useMemo(() => {
     if (selectedConfs.size === 0) return searchedGames;
     return searchedGames
@@ -124,20 +117,16 @@ export default function CollegeFootballPage() {
     [view]
   );
 
-  const title = useMemo(() => {
-    const base =
-      view === "all"
-        ? "CFB · All Games"
-        : view === "ml"
-        ? "CFB · Moneyline"
-        : "CFB · Over/Under";
-    const parts = [base];
-    if (query) parts.push(`Search: “${query}”`);
+  const viewLabel =
+    view === "all" ? "All Games" : view === "ml" ? "Moneyline" : "O/U";
+
+  const metaSubtitle = React.useMemo(() => {
+    const parts: string[] = [viewLabel];
+    if (query) parts.push(`Search “${query}”`);
     if (selectedConfs.size > 0) parts.push(`${selectedConfs.size} conf`);
     return parts.join(" · ");
-  }, [view, query, selectedConfs]);
+  }, [viewLabel, query, selectedConfs]);
 
-  // 🔹 Shared modal controller (same as NFL)
   const { openWithGame } = useGameDialog();
 
   const handleOpen = React.useCallback(
@@ -149,40 +138,98 @@ export default function CollegeFootballPage() {
 
   return (
     <Stack spacing={2}>
-      {/* Header row */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          {title}
-        </Typography>
+      {/* Header */}
+      <Stack spacing={1.25}>
+        {/* Top row: CFB + conference + refresh */}
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ minWidth: 0 }}
+        >
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ minWidth: 0, overflow: "hidden" }}
+          >
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 700, flexShrink: 0 }}
+            >
+              CFB
+            </Typography>
 
-        <Stack direction="row" alignItems="center" spacing={1}>
-          {/* Conference Filters */}
-          <Stack direction="row" spacing={1} alignItems="center">
             <Chip
               label={
                 selectedConfs.size
                   ? `Conference (${selectedConfs.size})`
-                  : "Conference"
+                  : "Select Conference"
               }
               onClick={handleOpenConfs}
               variant="outlined"
               color={selectedConfs.size ? "primary" : "default"}
-              sx={{ borderRadius: 999 }}
+              sx={{
+                borderRadius: 999,
+                flexShrink: 0,
+              }}
             />
-            <Chip label="P5" variant="outlined" onClick={selectP5} />
-            <Chip label="G5" variant="outlined" onClick={selectG5} />
-            <Chip label="Ind" variant="outlined" onClick={selectInd} />
-            {selectedConfs.size > 0 && (
-              <Chip label="Clear" variant="outlined" onClick={clearConfs} />
-            )}
+
+            {/* Quick chips: only show on sm+ to avoid overflow on mobile */}
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{ display: { xs: "none", sm: "flex" } }}
+            >
+              <Chip label="P5" variant="outlined" onClick={selectP5} />
+              <Chip label="G5" variant="outlined" onClick={selectG5} />
+              <Chip label="Ind" variant="outlined" onClick={selectInd} />
+              {selectedConfs.size > 0 && (
+                <Chip label="Clear" variant="outlined" onClick={clearConfs} />
+              )}
+            </Stack>
           </Stack>
 
-          {/* View filter */}
-          <ButtonGroup>
+          <IconButton aria-label="refresh" onClick={reload}>
+            <RefreshIcon />
+          </IconButton>
+        </Stack>
+
+        {/* Subtitle (optional info) */}
+        <Typography
+          variant="caption"
+          sx={{ opacity: 0.8 }}
+        >
+          {metaSubtitle}
+        </Typography>
+
+        {/* View toggle row */}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          justifyContent="space-between"
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 700,
+              display: { xs: "none", sm: "block" },
+            }}
+          >
+            {viewLabel}
+          </Typography>
+
+          <ButtonGroup
+            sx={{
+              width: { xs: "100%", sm: "auto" },
+            }}
+          >
             <Button
               variant={view === "all" ? "contained" : "outlined"}
               onClick={() => setView("all")}
               aria-label="All Games"
+              sx={{ flex: { xs: 1, sm: "0 0 auto" } }}
             >
               All Games
             </Button>
@@ -190,27 +237,25 @@ export default function CollegeFootballPage() {
               variant={view === "ml" ? "contained" : "outlined"}
               onClick={() => setView("ml")}
               aria-label="Moneyline"
+              sx={{ flex: { xs: 1, sm: "0 0 auto" } }}
             >
-              ML
+              Moneyline
             </Button>
             <Button
               variant={view === "ou" ? "contained" : "outlined"}
               onClick={() => setView("ou")}
-              aria-label="Over/Under"
+              aria-label="O/U"
+              sx={{ flex: { xs: 1, sm: "0 0 auto" } }}
             >
               O/U
             </Button>
           </ButtonGroup>
-
-          <IconButton aria-label="refresh" onClick={reload}>
-            <RefreshIcon />
-          </IconButton>
         </Stack>
       </Stack>
 
       {/* Conference popover */}
       <Popover
-        open={open}
+        open={popoverOpen}
         anchorEl={anchorEl}
         onClose={handleCloseConfs}
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}

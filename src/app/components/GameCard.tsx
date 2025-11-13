@@ -1,3 +1,4 @@
+// src/app/components/GameCard.tsx
 "use client";
 import * as React from "react";
 import {
@@ -9,13 +10,12 @@ import {
   Box,
   Divider,
   Chip,
-  Button, // ← added
+  Button,
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import type { Game } from "../data/mockOdds";
 import { bestForTeam, bestTotalsSide, formatAmerican } from "../utils/odds";
 
-// NEW: auth + firestore helper
 import { useRouter } from "next/navigation";
 import { useAuth } from "../providers";
 import { addSavedLine } from "../../lib/userData";
@@ -43,7 +43,6 @@ const edgeSheen = keyframes`
 export default function GameCard({ game, onOpen, market }: Props) {
   const [teamA, teamB] = game.teams;
 
-  // NEW: for Save Line
   const router = useRouter();
   const { user } = useAuth();
 
@@ -86,23 +85,24 @@ export default function GameCard({ game, onOpen, market }: Props) {
 
   const leftIsBest = leftNumeric > rightNumeric;
 
-  // NEW: minimal Save Line handler
   const handleSaveLine = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // don’t trigger onOpen
+    e.stopPropagation();
     if (!user) {
       router.push("/auth");
       return;
     }
 
-    // Build a stable-ish id; fall back if your mock Game lacks eventId
     const eventId =
       (game as any).eventId ??
       (game as any).id ??
       `${teamA}-${teamB}-${game.commenceTime}`;
 
-    const rawLeague = String((game as any).league ?? (game as any).sportKey ?? "");
+    const rawLeague = String(
+      (game as any).league ?? (game as any).sportKey ?? ""
+    );
     const league =
-      rawLeague.toUpperCase().includes("NCAA") || rawLeague.toUpperCase() === "NCAAF"
+      rawLeague.toUpperCase().includes("NCAA") ||
+      rawLeague.toUpperCase() === "NCAAF"
         ? "CFB"
         : rawLeague.toUpperCase() || "NFL";
 
@@ -110,9 +110,10 @@ export default function GameCard({ game, onOpen, market }: Props) {
       await addSavedLine(user.uid, {
         id: `${eventId}-${market === "Moneyline" ? "ML" : "TOTAL"}`,
         league,
-        label: `${teamA} @ ${teamB} — ${market === "Moneyline" ? "ML" : "Total"}`,
+        label: `${teamA} @ ${teamB} — ${
+          market === "Moneyline" ? "ML" : "Total"
+        }`,
       });
-      // Keep feedback simple for step 1
       // eslint-disable-next-line no-alert
       alert("Saved! Check your Account → Saved Lines.");
     } catch (err: any) {
@@ -131,7 +132,8 @@ export default function GameCard({ game, onOpen, market }: Props) {
         background:
           "linear-gradient(180deg, rgba(17,24,33,1) 0%, rgba(13,17,24,1) 100%)",
         position: "relative",
-        transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
+        transition:
+          "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
         "&:hover": {
           transform: "translateY(-2px)",
           borderColor: "rgba(255,214,0,0.22)",
@@ -162,13 +164,26 @@ export default function GameCard({ game, onOpen, market }: Props) {
         }}
       >
         <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          {/* Header row */}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            sx={{ mb: 1, gap: { xs: 0.5, sm: 0 } }}
+          >
             <Stack spacing={0.25}>
               <Typography variant="subtitle2" color="text.secondary">
                 {kickoffText(game.commenceTime)}
               </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
-                {teamA} <Typography component="span" sx={{ opacity: 0.6 }}>@</Typography> {teamB}
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 800, lineHeight: 1.15 }}
+              >
+                {teamA}{" "}
+                <Typography component="span" sx={{ opacity: 0.6 }}>
+                  @
+                </Typography>{" "}
+                {teamB}
               </Typography>
             </Stack>
 
@@ -188,12 +203,17 @@ export default function GameCard({ game, onOpen, market }: Props) {
             </Box>
           </Stack>
 
+          {/* Odds layout */}
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "1fr 14px 1fr",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "1fr 14px 1fr",
+              },
               alignItems: "stretch",
-              gap: 1.25,
+              rowGap: { xs: 1.25, sm: 0 },
+              columnGap: { xs: 0, sm: 1.25 },
             }}
           >
             {/* LEFT SIDE */}
@@ -227,26 +247,29 @@ export default function GameCard({ game, onOpen, market }: Props) {
               </Typography>
               {leftIsBest && (
                 <Chip
-                  label="Max"
+                  label="Maxx"
                   size="small"
                   sx={{
-                    position: "absolute",
-                    top: 6,
-                    right: 6,
+                    position: { xs: "absolute", sm: "absolute" },
+                    top: { xs: "50%", sm: 6 },
+                    right: { xs: 8, sm: 6 },
+                    transform: { xs: "translateY(-50%)", sm: "none" },
                     fontSize: 10,
                     height: 18,
                     bgcolor: "rgba(255,214,0,0.08)",
                     color: "primary.main",
                     border: "1px solid rgba(255,214,0,0.4)",
                     fontWeight: 700,
+                    zIndex: 5,
                   }}
                 />
               )}
             </Box>
 
+            {/* Divider (desktop only) */}
             <Box
               sx={{
-                display: "flex",
+                display: { xs: "none", sm: "flex" },
                 alignItems: "center",
                 justifyContent: "center",
                 opacity: 0.2,
@@ -270,7 +293,7 @@ export default function GameCard({ game, onOpen, market }: Props) {
                   ? "1px solid rgba(255,214,0,0.25)"
                   : "1px solid rgba(255,255,255,0.06)",
                 position: "relative",
-                textAlign: "right",
+                textAlign: { xs: "left", sm: "right" },
               }}
             >
               <Typography
@@ -294,22 +317,25 @@ export default function GameCard({ game, onOpen, market }: Props) {
                   label="Max"
                   size="small"
                   sx={{
-                    position: "absolute",
-                    top: 6,
-                    left: 6,
+                    position: { xs: "absolute", sm: "absolute" },
+                    top: { xs: "50%", sm: 6 },
+                    right: { xs: 8, sm: "auto" },
+                    left: { xs: "auto", sm: 6 },
+                    transform: { xs: "translateY(-50%)", sm: "none" },
                     fontSize: 10,
                     height: 18,
                     bgcolor: "rgba(255,214,0,0.08)",
                     color: "primary.main",
                     border: "1px solid rgba(255,214,0,0.4)",
                     fontWeight: 700,
+                    zIndex: 5,
                   }}
                 />
               )}
             </Box>
           </Box>
 
-          {/* NEW: Action row (doesn't interfere with the clickable card) */}
+          {/* Save line */}
           <Box sx={{ mt: 1.25, display: "flex", justifyContent: "flex-end" }}>
             <Button
               variant="outlined"

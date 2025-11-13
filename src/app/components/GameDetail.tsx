@@ -1,3 +1,4 @@
+// src/app/components/GameDetail.tsx
 "use client";
 import * as React from "react";
 import {
@@ -13,6 +14,7 @@ import {
   Divider,
   Button,
   ButtonGroup,
+  Tooltip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { keyframes } from "@mui/system";
@@ -26,10 +28,7 @@ import {
   bestTotalsSide,
 } from "../utils/odds";
 
-// 🔹 Preferred-books context
 import { useBooks } from "../contexts/BookProvider";
-
-// 🔹 Firestore for outbound click logging
 import { db } from "../../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -52,11 +51,9 @@ type Props = {
   open: boolean;
   onClose: () => void;
   market: Market;
-  /** which list opened the modal; controls which sections render */
   detailView?: DetailView;
 };
 
-// 🔹 Map sportsbook keys → outbound URLs (lowercase keys)
 const BOOK_URLS: Record<string, string> = {
   betonlineag: "https://www.betonline.ag/sportsbook",
   betmgm: "https://sports.az.betmgm.com/en/sports",
@@ -92,10 +89,8 @@ export default function GameDetail({
   const view: DetailView = detailView ?? (market === "Total" ? "ou" : "ml");
   const [teamA, teamB] = game.teams;
 
-  // 🔹 Which books to show: all vs my books
   const [bookMode, setBookMode] = React.useState<BookMode>("all");
 
-  // 🔹 Preferred books from global context
   const { preferredBooks } = useBooks();
   const preferredSet = React.useMemo(
     () => new Set(preferredBooks.map((b) => b.toLowerCase().trim())),
@@ -122,7 +117,6 @@ export default function GameDetail({
     );
   }
 
-  // 🔹 Base sorted rows (pure odds sort)
   const mlRowsA = React.useMemo(
     () => sortedForTeam(game.books, teamA),
     [game.books, teamA]
@@ -140,11 +134,10 @@ export default function GameDetail({
     [game.totals]
   );
 
-  // 🔹 Filter by book mode: keep "true best" (index 0) + any preferred books
   function rowsForMode<T extends { book: string }>(rows: T[]): T[] {
     if (bookMode === "all") return rows;
-
     if (!rows.length) return rows;
+
     const [best, ...rest] = rows;
     const filteredPreferred = rest.filter((r) =>
       preferredSet.has(r.book.toLowerCase().trim())
@@ -154,18 +147,42 @@ export default function GameDetail({
 
   const kickoffText = new Date(game.commenceTime).toLocaleString();
 
-  // 🔹 Firestore logging + outbound navigation
+  React.useEffect(() => {
+    if (!open || !game) return;
+
+    const sportKey =
+      (game as any).sportKey ||
+      (game as any).league ||
+      (game as any).sport ||
+      "";
+    const eventId =
+      (game as any).eventId ||
+      (game as any).id ||
+      (game as any).gameId ||
+      "";
+
+    addDoc(collection(db, "gameViews"), {
+      sportKey,
+      eventId,
+      teams: game.teams || [],
+      commenceTime: (game as any).commenceTime ?? null,
+      source: "game_detail_modal",
+      createdAt: serverTimestamp(),
+    }).catch((e) => {
+      console.error("Failed to log game view", e);
+    });
+  }, [open, game]);
+
   async function handleBookClick(options: {
     book: string;
     market: "ml" | "total";
-    side: string; // teamA / teamB / over / under
+    side: string;
     line?: number;
     price?: number;
   }) {
     const rawKey = options.book || "";
     const normKey = rawKey.toLowerCase().trim();
 
-    // Try direct mapping; if no URL, still log but skip navigation
     const url = BOOK_URLS[normKey];
 
     const sportKey =
@@ -193,7 +210,6 @@ export default function GameDetail({
       });
     } catch (e) {
       console.error("Failed to log outbound click", e);
-      // still try to navigate
     }
 
     if (url) {
@@ -279,10 +295,10 @@ export default function GameDetail({
           {kickoffText}
         </Typography>
 
-        {/* Book mode toggle */}
+        {/* Book mode toggle – centered on mobile */}
         <Stack
           direction="row"
-          justifyContent="flex-end"
+          justifyContent={{ xs: "center", sm: "flex-end" }}
           sx={{ mt: 1, mb: 2 }}
         >
           <ButtonGroup size="small">
@@ -301,26 +317,30 @@ export default function GameDetail({
           </ButtonGroup>
         </Stack>
 
-        {/* ───────────────────────── Moneyline (all + ml) ───────────────────────── */}
+        {/* ───────────── Moneyline (all + ml) ───────────── */}
         {(view === "all" || view === "ml") && (
           <Stack spacing={2.5} sx={{ mb: view === "all" ? 2 : 0 }}>
             {/* Team A */}
             <Box>
               <Stack
-                direction="row"
-                alignItems="center"
+                direction={{ xs: "column", sm: "row" }}
+                alignItems={{ xs: "flex-start", sm: "center" }}
                 justifyContent="space-between"
+                spacing={{ xs: 0.75, sm: 0 }}
                 sx={{ mb: 1 }}
               >
                 <Chip label={`${teamA} Moneyline`} color="primary" />
+                {/* hide best chip on mobile to avoid horizontal scroll */}
                 {(() => {
                   const best = bestForTeam(game.books, teamA);
                   return best ? (
-                    <BestChip
-                      label={`Best: ${formatAmerican(
-                        best.price
-                      )} · ${best.book}`}
-                    />
+                    <Box sx={{ display: { xs: "none", sm: "block" } }}>
+                      <BestChip
+                        label={`Best: ${formatAmerican(
+                          best.price
+                        )} · ${best.book}`}
+                      />
+                    </Box>
                   ) : null;
                 })()}
               </Stack>
@@ -330,9 +350,9 @@ export default function GameDetail({
                   const isPreferred = preferredSet.has(
                     row.book.toLowerCase().trim()
                   );
-                  return (
+
+                  const listItem = (
                     <ListItem
-                      key={`${row.book}-A-${idx}`}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -350,7 +370,7 @@ export default function GameDetail({
                         cursor: "pointer",
                         bgcolor:
                           idx === 0
-                            ? "rgba(255,214,0,0.10)" // absolute best line
+                            ? "rgba(255,214,0,0.10)"
                             : "rgba(255,255,255,0.03)",
                         border:
                           isPreferred && idx !== 0
@@ -386,6 +406,18 @@ export default function GameDetail({
                       />
                     </ListItem>
                   );
+
+                  return (
+                    <Tooltip
+                      key={`${row.book}-A-${idx}`}
+                      title={`Click to visit ${row.book}`}
+                      placement="top"
+                      arrow
+                      enterDelay={500}
+                    >
+                      {listItem}
+                    </Tooltip>
+                  );
                 })}
               </List>
             </Box>
@@ -395,20 +427,23 @@ export default function GameDetail({
             {/* Team B */}
             <Box>
               <Stack
-                direction="row"
-                alignItems="center"
+                direction={{ xs: "column", sm: "row" }}
+                alignItems={{ xs: "flex-start", sm: "center" }}
                 justifyContent="space-between"
+                spacing={{ xs: 0.75, sm: 0 }}
                 sx={{ mb: 1 }}
               >
                 <Chip label={`${teamB} Moneyline`} color="primary" />
                 {(() => {
                   const best = bestForTeam(game.books, teamB);
                   return best ? (
-                    <BestChip
-                      label={`Best: ${formatAmerican(
-                        best.price
-                      )} · ${best.book}`}
-                    />
+                    <Box sx={{ display: { xs: "none", sm: "block" } }}>
+                      <BestChip
+                        label={`Best: ${formatAmerican(
+                          best.price
+                        )} · ${best.book}`}
+                      />
+                    </Box>
                   ) : null;
                 })()}
               </Stack>
@@ -418,9 +453,9 @@ export default function GameDetail({
                   const isPreferred = preferredSet.has(
                     row.book.toLowerCase().trim()
                   );
-                  return (
+
+                  const listItem = (
                     <ListItem
-                      key={`${row.book}-B-${idx}`}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -474,37 +509,51 @@ export default function GameDetail({
                       />
                     </ListItem>
                   );
+
+                  return (
+                    <Tooltip
+                      key={`${row.book}-B-${idx}`}
+                      title={`Click to visit ${row.book}`}
+                      placement="top"
+                      arrow
+                      enterDelay={500}
+                    >
+                      {listItem}
+                    </Tooltip>
+                  );
                 })}
               </List>
             </Box>
           </Stack>
         )}
 
-        {/* Divider between ML and Totals only when showing both (view === "all") */}
         {view === "all" && (
           <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 2 }} />
         )}
 
-        {/* ───────────────────────── Totals (all + ou) ─────────────────────────── */}
+        {/* ───────────── Totals (all + ou) ───────────── */}
         {(view === "all" || view === "ou") && (
           <Stack spacing={2.5} sx={{ mb: view === "all" ? 2 : 0 }}>
             {/* Over */}
             <Box>
               <Stack
-                direction="row"
-                alignItems="center"
+                direction={{ xs: "column", sm: "row" }}
+                alignItems={{ xs: "flex-start", sm: "center" }}
                 justifyContent="space-between"
+                spacing={{ xs: 0.75, sm: 0 }}
                 sx={{ mb: 1 }}
               >
                 <Chip label="Over" color="primary" />
                 {(() => {
                   const best = bestTotalsSide(game.totals, "Over");
                   return best ? (
-                    <BestChip
-                      label={`Best: O ${best.line} ${formatAmerican(
-                        best.price
-                      )} · ${best.book}`}
-                    />
+                    <Box sx={{ display: { xs: "none", sm: "block" } }}>
+                      <BestChip
+                        label={`Best: O ${best.line} ${formatAmerican(
+                          best.price
+                        )} · ${best.book}`}
+                      />
+                    </Box>
                   ) : null;
                 })()}
               </Stack>
@@ -514,9 +563,9 @@ export default function GameDetail({
                   const isPreferred = preferredSet.has(
                     row.book.toLowerCase().trim()
                   );
-                  return (
+
+                  const listItem = (
                     <ListItem
-                      key={`${row.book}-O-${idx}`}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -571,6 +620,18 @@ export default function GameDetail({
                       />
                     </ListItem>
                   );
+
+                  return (
+                    <Tooltip
+                      key={`${row.book}-O-${idx}`}
+                      title={`Click to visit ${row.book}`}
+                      placement="top"
+                      arrow
+                      enterDelay={500}
+                    >
+                      {listItem}
+                    </Tooltip>
+                  );
                 })}
               </List>
             </Box>
@@ -580,20 +641,23 @@ export default function GameDetail({
             {/* Under */}
             <Box>
               <Stack
-                direction="row"
-                alignItems="center"
+                direction={{ xs: "column", sm: "row" }}
+                alignItems={{ xs: "flex-start", sm: "center" }}
                 justifyContent="space-between"
+                spacing={{ xs: 0.75, sm: 0 }}
                 sx={{ mb: 1 }}
               >
                 <Chip label="Under" color="primary" />
                 {(() => {
                   const best = bestTotalsSide(game.totals, "Under");
                   return best ? (
-                    <BestChip
-                      label={`Best: U ${best.line} ${formatAmerican(
-                        best.price
-                      )} · ${best.book}`}
-                    />
+                    <Box sx={{ display: { xs: "none", sm: "block" } }}>
+                      <BestChip
+                        label={`Best: U ${best.line} ${formatAmerican(
+                          best.price
+                        )} · ${best.book}`}
+                      />
+                    </Box>
                   ) : null;
                 })()}
               </Stack>
@@ -603,9 +667,9 @@ export default function GameDetail({
                   const isPreferred = preferredSet.has(
                     row.book.toLowerCase().trim()
                   );
-                  return (
+
+                  const listItem = (
                     <ListItem
-                      key={`${row.book}-U-${idx}`}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -660,13 +724,25 @@ export default function GameDetail({
                       />
                     </ListItem>
                   );
+
+                  return (
+                    <Tooltip
+                      key={`${row.book}-U-${idx}`}
+                      title={`Click to visit ${row.book}`}
+                      placement="top"
+                      arrow
+                      enterDelay={500}
+                    >
+                      {listItem}
+                    </Tooltip>
+                  );
                 })}
               </List>
             </Box>
           </Stack>
         )}
 
-        {/* ───────────────────────── Anytime TD (placeholder) ───────────────────── */}
+        {/* Anytime TD placeholder */}
         {view === "all" && (
           <>
             <Divider

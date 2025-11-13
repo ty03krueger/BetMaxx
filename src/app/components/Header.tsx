@@ -25,7 +25,9 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { alpha } from "@mui/material/styles";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import { alpha, useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 import { useAuth } from "../providers";
 import { signOut } from "firebase/auth";
@@ -83,6 +85,10 @@ export default function Header() {
   const [menuEl, setMenuEl] = React.useState<null | HTMLElement>(null);
   const menuOpen = Boolean(menuEl);
 
+  // League menu (mobile)
+  const [leagueMenuEl, setLeagueMenuEl] = React.useState<null | HTMLElement>(null);
+  const leagueMenuOpen = Boolean(leagueMenuEl);
+
   // Initialize search with existing ?q= if present
   const initialQ = searchParams.get("q") || "";
   const [q, setQ] = React.useState(initialQ);
@@ -93,6 +99,9 @@ export default function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const tabs = React.useMemo(
     () => [
@@ -115,6 +124,11 @@ export default function Header() {
     }
     return "/";
   }, [pathname, tabs]);
+
+  const activeTab = React.useMemo(
+    () => tabs.find((t) => t.href === activeHref) ?? tabs[0],
+    [tabs, activeHref]
+  );
 
   // Helper: update ?q= and dispatch event so pages can react immediately
   const pushQueryAndNotify = React.useCallback(
@@ -144,7 +158,6 @@ export default function Header() {
   const handleAvatarClick = (e: React.MouseEvent<HTMLElement>) => setMenuEl(e.currentTarget);
   const handleMenuClose = () => setMenuEl(null);
 
-  // ⬇️ CHANGED: Account → /account
   const handleGoAccount = () => {
     handleMenuClose();
     router.push("/account");
@@ -164,6 +177,20 @@ export default function Header() {
     user?.displayName?.[0]?.toUpperCase() ??
     user?.email?.[0]?.toUpperCase() ??
     "U";
+
+  // League menu handlers (mobile)
+  const handleLeagueButtonClick = (e: React.MouseEvent<HTMLElement>) => {
+    setLeagueMenuEl(e.currentTarget);
+  };
+
+  const handleLeagueMenuClose = () => {
+    setLeagueMenuEl(null);
+  };
+
+  const handleSelectLeague = (href: string) => {
+    setLeagueMenuEl(null);
+    router.push(href);
+  };
 
   return (
     <AppBar
@@ -213,7 +240,12 @@ export default function Header() {
           <Typography
             variant="h6"
             className="bm-word"
-            sx={{ fontWeight: 800, letterSpacing: 0.2, mr: 0.25 }}
+            sx={{
+              fontWeight: 800,
+              letterSpacing: 0.2,
+              mr: 0.25,
+              fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" },
+            }}
           >
             BetMax
           </Typography>
@@ -225,8 +257,8 @@ export default function Header() {
           component="form"
           onSubmit={handleSubmit}
           sx={{
-            mx: { xs: 1, md: 3 },
-            flex: 1,
+            mx: { xs: 0.5, sm: 1, md: 3 },
+            flex: { xs: 1.4, sm: 1, md: 1 },
             display: "flex",
             justifyContent: "center",
           }}
@@ -234,7 +266,9 @@ export default function Header() {
           <TextField
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search teams, matchups, players…"
+            placeholder={
+              isMobile ? "Search" : "Search teams, matchups, players…"
+            }
             size="small"
             fullWidth
             sx={{
@@ -286,13 +320,63 @@ export default function Header() {
           />
         </Box>
 
-        {/* League tabs (route-driven) + Auth */}
-        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1.25 }}>
+        {/* League selection + Auth */}
+        <Box
+          sx={{
+            ml: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 1.25,
+          }}
+        >
+          {/* ⬇️ Mobile: league dropdown */}
+          <Box sx={{ display: { xs: "flex", sm: "none" } }}>
+            <Button
+              size="small"
+              onClick={handleLeagueButtonClick}
+              endIcon={<ArrowDropDownIcon />}
+              sx={{
+                borderRadius: 999,
+                border: `1px solid ${alpha("#FFFFFF", 0.18)}`,
+                color: alpha("#FFFFFF", 0.9),
+                textTransform: "none",
+                px: 1.25,
+                minWidth: 0,
+                backgroundColor: alpha("#FFFFFF", 0.03),
+                "&:hover": {
+                  borderColor: alpha("#FFD600", 0.6),
+                  backgroundColor: alpha("#FFFFFF", 0.06),
+                },
+              }}
+            >
+              {activeTab.label}
+            </Button>
+            <Menu
+              anchorEl={leagueMenuEl}
+              open={leagueMenuOpen}
+              onClose={handleLeagueMenuClose}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              {tabs.map((t) => (
+                <MenuItem
+                  key={t.href}
+                  selected={t.href === activeHref}
+                  onClick={() => handleSelectLeague(t.href)}
+                >
+                  {t.label}
+                </MenuItem>
+              ))}
+            </Menu>
+          </Box>
+
+          {/* ⬇️ Desktop / tablet: pill tabs */}
           <ToggleButtonGroup
             exclusive
             value={activeHref}
             size="small"
             sx={{
+              display: { xs: "none", sm: "flex" },
               backgroundColor: alpha("#FFFFFF", 0.03),
               border: `1px solid ${alpha("#FFFFFF", 0.08)}`,
               borderRadius: 999,

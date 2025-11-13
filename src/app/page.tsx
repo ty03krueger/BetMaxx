@@ -27,6 +27,15 @@ import { useOdds } from "./hooks/useOdds";
 import { isFinal } from "./utils/isFinal";
 import type { Game } from "./api/odds/route";
 
+/* ---------- league config (shared) ---------- */
+const LEAGUES = [
+  { href: "/nfl", title: "NFL", icon: <SportsFootballIcon />, coming: false },
+  { href: "/cfb", title: "College Football", icon: <SchoolIcon />, coming: false },
+  { href: "/nba", title: "NBA", icon: <SportsBasketballIcon />, coming: true },
+  { href: "/nhl", title: "NHL", icon: <SportsHockeyIcon />, coming: true },
+  { href: "/mlb", title: "MLB", icon: <SportsBaseballIcon />, coming: true },
+];
+
 /* ---------- subtle gold divider ---------- */
 function GoldDivider() {
   return (
@@ -173,18 +182,55 @@ export default function HomePage() {
           <Typography variant="overline" sx={{ letterSpacing: 2, opacity: 0.8 }}>
             BetMaxx
           </Typography>
-          <Typography variant="h2" sx={{ fontWeight: 900, textAlign: "center", lineHeight: 1.1 }}>
+          <Typography
+            variant="h2"
+            sx={{ fontWeight: 900, textAlign: "center", lineHeight: 1.1 }}
+          >
             Compare Odds. <br /> Bet Smarter. <br /> Win Maxx.
           </Typography>
-          <Typography variant="subtitle1" sx={{ textAlign: "center", maxWidth: 720, opacity: 0.85 }}>
-            A clean, pro-grade odds hub designed to make your bets <b>easier</b>, <b>faster</b>, and <b>more profitable</b>.
+          <Typography
+            variant="subtitle1"
+            sx={{ textAlign: "center", maxWidth: 720, opacity: 0.85 }}
+          >
+            A clean, pro-grade odds hub designed to make your bets <b>easier</b>,{" "}
+            <b>faster</b>, and <b>more profitable</b>.
           </Typography>
 
-          <Stack direction="row" spacing={2} sx={{ pt: 1 }}>
-            <Button component={Link} href="/nfl" size="large" variant="contained" sx={{ borderRadius: 999 }}>
+          {/* HERO BUTTONS - centered + stacked on mobile */}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            sx={{
+              pt: 1,
+              width: "100%",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Button
+              component={Link}
+              href="/nfl"
+              size="large"
+              variant="contained"
+              sx={{
+                borderRadius: 999,
+                width: { xs: "100%", sm: "auto" },
+                textAlign: "center",
+              }}
+            >
               View NFL Odds
             </Button>
-            <Button component={Link} href="/cfb" size="large" variant="outlined" sx={{ borderRadius: 999 }}>
+            <Button
+              component={Link}
+              href="/cfb"
+              size="large"
+              variant="outlined"
+              sx={{
+                borderRadius: 999,
+                width: { xs: "100%", sm: "auto" },
+                textAlign: "center",
+              }}
+            >
               College Football
             </Button>
           </Stack>
@@ -194,14 +240,64 @@ export default function HomePage() {
       {/* divider */}
       <GoldDivider />
 
-      {/* LEAGUE GRID */}
-      <Box sx={{ px: { xs: 2, md: 4 } }}>
+      {/* LEAGUE SECTION */}
+
+      {/* Mobile: pill row */}
+      <Box
+        sx={{
+          display: { xs: "block", md: "none" },
+          px: { xs: 2, md: 4 },
+        }}
+      >
+        <Stack spacing={1.5} alignItems="center">
+          <Typography
+            variant="subtitle2"
+            sx={{
+              textTransform: "uppercase",
+              letterSpacing: 2,
+              opacity: 0.7,
+            }}
+          >
+            Sports
+          </Typography>
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+            justifyContent="center"
+          >
+            {LEAGUES.map((lg) => (
+              <LeaguePill
+                key={lg.href}
+                href={lg.href}
+                title={lg.title}
+                icon={lg.icon}
+                coming={lg.coming}
+              />
+            ))}
+          </Stack>
+        </Stack>
+      </Box>
+
+      {/* Desktop / tablet: original card grid */}
+      <Box
+        sx={{
+          display: { xs: "none", md: "block" },
+          px: { xs: 2, md: 4 },
+          maxWidth: 900,
+          mx: "auto",
+        }}
+      >
         <Grid container spacing={2}>
-          <LeagueCard href="/nfl" title="NFL" icon={<SportsFootballIcon />} />
-          <LeagueCard href="/cfb" title="College Football" icon={<SchoolIcon />} />
-          <LeagueCard href="/nba" title="NBA" icon={<SportsBasketballIcon />} coming />
-          <LeagueCard href="/nhl" title="NHL" icon={<SportsHockeyIcon />} coming />
-          <LeagueCard href="/mlb" title="MLB" icon={<SportsBaseballIcon />} coming />
+          {LEAGUES.map((lg) => (
+            <LeagueCard
+              key={lg.href}
+              href={lg.href}
+              title={lg.title}
+              icon={lg.icon}
+              coming={lg.coming}
+            />
+          ))}
         </Grid>
       </Box>
 
@@ -210,11 +306,24 @@ export default function HomePage() {
 
       {/* UPCOMING CAROUSEL */}
       <Box sx={{ px: { xs: 2, md: 4 } }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent={{ xs: "center", sm: "space-between" }}
+          sx={{ mb: 2, gap: { xs: 1, sm: 0 } }}
+        >
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 800, textAlign: { xs: "center", sm: "left" } }}
+          >
             Upcoming · Best Odds ({windowLabel})
           </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ alignSelf: { xs: "center", sm: "auto" } }}
+          >
             <Chip size="small" label="NFL" variant="outlined" />
             <Chip size="small" label="CFB" variant="outlined" />
           </Stack>
@@ -229,9 +338,18 @@ export default function HomePage() {
       {/* VALUE PROPS */}
       <Box sx={{ px: { xs: 2, md: 4 } }}>
         <Grid container spacing={2}>
-          <ValueCard title="Best Line, Instantly" body="We scan multiple books so you don’t leave value on the table." />
-          <ValueCard title="Live Refresh" body="Odds update instantly. React like your in the bleachers." />
-          <ValueCard title="Built for Speed" body="Minimal clicks. Faster decisions. More fun. A true bettor’s UI." />
+          <ValueCard
+            title="Best Line, Instantly"
+            body="We scan multiple books so you don’t leave value on the table."
+          />
+          <ValueCard
+            title="Live Refresh"
+            body="Odds update instantly. React like your in the bleachers."
+          />
+          <ValueCard
+            title="Built for Speed"
+            body="Minimal clicks. Faster decisions. More fun. A true bettor’s UI."
+          />
         </Grid>
       </Box>
 
@@ -239,7 +357,12 @@ export default function HomePage() {
       <Box sx={{ px: { xs: 2, md: 4 } }}>
         <Card variant="outlined" sx={{ borderRadius: 4 }}>
           <CardContent>
-            <Stack direction={{ xs: "column", md: "row" }} alignItems="center" justifyContent="space-between" spacing={2}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              alignItems={{ xs: "flex-start", md: "center" }}
+              justifyContent={{ xs: "flex-start", md: "space-between" }}
+              spacing={2}
+            >
               <Stack spacing={0.5}>
                 <Typography variant="h6" sx={{ fontWeight: 800 }}>
                   Customize Your Board, Maxx Your Bets Effortlessly
@@ -248,11 +371,34 @@ export default function HomePage() {
                   Personalize your board, track markets you care about, and catch shifts in real time.
                 </Typography>
               </Stack>
-              <Stack direction="row" spacing={2}>
-                <Button component={Link} href="/account" variant="contained" sx={{ borderRadius: 999 }}>
+              {/* CTA BUTTONS - centered / full width on mobile */}
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                sx={{ width: { xs: "100%", sm: "auto" }, alignItems: "center" }}
+              >
+                <Button
+                  component={Link}
+                  href="/account"
+                  variant="contained"
+                  sx={{
+                    borderRadius: 999,
+                    width: { xs: "100%", sm: "auto" },
+                    textAlign: "center",
+                  }}
+                >
                   My Account
                 </Button>
-                <Button component={Link} href="/nba" variant="outlined" sx={{ borderRadius: 999 }}>
+                <Button
+                  component={Link}
+                  href="/nba"
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 999,
+                    width: { xs: "100%", sm: "auto" },
+                    textAlign: "center",
+                  }}
+                >
                   See What’s Next
                 </Button>
               </Stack>
@@ -265,6 +411,48 @@ export default function HomePage() {
 }
 
 /* ---------- Components ---------- */
+
+function LeaguePill({
+  href,
+  title,
+  icon,
+  coming,
+}: {
+  href: string;
+  title: string;
+  icon: React.ReactNode;
+  coming?: boolean;
+}) {
+  return (
+    <Button
+      component={Link as any}
+      href={href}
+      size="small"
+      variant={coming ? "outlined" : "contained"}
+      startIcon={icon}
+      sx={{
+        borderRadius: 999,
+        textTransform: "none",
+        fontSize: 12,
+        px: 1.8,
+        py: 0.6,
+        opacity: coming ? 0.8 : 1,
+        borderColor: coming ? alpha("#ffffff", 0.25) : undefined,
+      }}
+    >
+      {title}
+      {coming && (
+        <Typography
+          component="span"
+          sx={{ ml: 0.5, fontSize: 10, opacity: 0.9 }}
+        >
+          Soon
+        </Typography>
+      )}
+    </Button>
+  );
+}
+
 function LeagueCard({
   href,
   title,
@@ -291,14 +479,20 @@ function LeagueCard({
         }}
       >
         <CardContent>
-          <Stack direction="row" alignItems="center" spacing={2} justifyContent="space-between">
+          <Stack spacing={1.25}>
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Box sx={{ opacity: 0.9 }}>{icon}</Box>
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
                 {title}
               </Typography>
             </Stack>
-            {coming && <Chip label="Coming Soon" size="small" />}
+            {coming && (
+              <Chip
+                label="Coming Soon"
+                size="small"
+                sx={{ alignSelf: { xs: "flex-start", sm: "flex-start" } }}
+              />
+            )}
           </Stack>
         </CardContent>
       </Card>
@@ -314,7 +508,9 @@ function ValueCard({ title, body }: { title: string; body: string }) {
           <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
             {title}
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.85 }}>{body}</Typography>
+          <Typography variant="body2" sx={{ opacity: 0.85 }}>
+            {body}
+          </Typography>
         </CardContent>
       </Card>
     </Grid>
@@ -342,7 +538,16 @@ function UpcomingCarousel({
 
   if (loading && (!games || games.length === 0)) {
     return (
-      <Box sx={{ borderRadius: 4, border: "1px solid", borderColor: "divider", p: 4, textAlign: "center", opacity: 0.8 }}>
+      <Box
+        sx={{
+          borderRadius: 4,
+          border: "1px solid",
+          borderColor: "divider",
+          p: 4,
+          textAlign: "center",
+          opacity: 0.8,
+        }}
+      >
         Loading live board…
       </Box>
     );
@@ -354,18 +559,34 @@ function UpcomingCarousel({
         ? "No upcoming games in the next 24 hours."
         : "No upcoming games in the next 6 hours.";
     return (
-      <Box sx={{ borderRadius: 4, border: "1px solid", borderColor: "divider", p: 4, textAlign: "center", opacity: 0.8 }}>
+      <Box
+        sx={{
+          borderRadius: 4,
+          border: "1px solid",
+          borderColor: "divider",
+          p: 4,
+          textAlign: "center",
+          opacity: 0.8,
+        }}
+      >
         {emptyText}
       </Box>
     );
   }
 
   return (
-    <Box sx={{ position: "relative" }}>
+    <Box
+      sx={{
+        position: "relative",
+        width: "100%",
+        mx: { xs: "auto", sm: 0 },
+      }}
+    >
       <IconButton
         aria-label="prev"
         onClick={scrollByCard(-1)}
         sx={{
+          display: { xs: "none", sm: "flex" },
           position: "absolute",
           left: -8,
           top: "50%",
@@ -387,9 +608,14 @@ function UpcomingCarousel({
           overflowX: "auto",
           scrollBehavior: "smooth",
           py: 1,
-          px: 6,
+          px: { xs: 3, sm: 6 },
+          justifyContent: { xs: "flex-start", sm: "flex-start" },
+          scrollSnapType: { xs: "x mandatory", sm: "none" } as any,
           "::-webkit-scrollbar": { height: 8 },
-          "::-webkit-scrollbar-thumb": { background: "rgba(255,255,255,0.2)", borderRadius: 999 },
+          "::-webkit-scrollbar-thumb": {
+            background: "rgba(255,255,255,0.2)",
+            borderRadius: 999,
+          },
         }}
       >
         {games.map((g) => (
@@ -401,6 +627,7 @@ function UpcomingCarousel({
         aria-label="next"
         onClick={scrollByCard(1)}
         sx={{
+          display: { xs: "none", sm: "flex" },
           position: "absolute",
           right: -8,
           top: "50%",
@@ -434,10 +661,11 @@ function UpcomingCard({ game }: { game: Game }) {
     <Card
       variant="outlined"
       sx={{
-        minWidth: 280,
+        minWidth: { xs: 260, sm: 280 },
         borderRadius: 4,
         transition: "transform 160ms ease",
         ":hover": { transform: "translateY(-2px)" },
+        scrollSnapAlign: { xs: "center", sm: "none" } as any,
       }}
     >
       <CardContent>
@@ -461,21 +689,37 @@ function UpcomingCard({ game }: { game: Game }) {
               <Chip
                 size="small"
                 variant="outlined"
-                label={`${away}: ${fmtAmerican(best.away?.price)}${best.away?.book ? ` · ${best.away.book}` : ""}`}
+                label={`${away}: ${fmtAmerican(best.away?.price)}${
+                  best.away?.book ? ` · ${best.away.book}` : ""
+                }`}
               />
               <Chip
                 size="small"
                 variant="outlined"
-                label={`${home}: ${fmtAmerican(best.home?.price)}${best.home?.book ? ` · ${best.home.book}` : ""}`}
+                label={`${home}: ${fmtAmerican(best.home?.price)}${
+                  best.home?.book ? ` · ${best.home.book}` : ""
+                }`}
               />
             </Stack>
           </Stack>
 
           <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
-            <Button component={Link} href={href} variant="contained" size="small" sx={{ borderRadius: 999 }}>
+            <Button
+              component={Link}
+              href={href}
+              variant="contained"
+              size="small"
+              sx={{ borderRadius: 999 }}
+            >
               View Odds
             </Button>
-            <Button component={Link} href={href} variant="outlined" size="small" sx={{ borderRadius: 999 }}>
+            <Button
+              component={Link}
+              href={href}
+              variant="outlined"
+              size="small"
+              sx={{ borderRadius: 999 }}
+            >
               Details
             </Button>
           </Stack>
@@ -484,4 +728,5 @@ function UpcomingCard({ game }: { game: Game }) {
     </Card>
   );
 }
+
 
