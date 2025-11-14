@@ -7,7 +7,6 @@ import {
   Box,
   Stack,
   Typography,
-  Grid,
   Card,
   CardContent,
   Button,
@@ -28,6 +27,7 @@ import {
   ToggleButtonGroup,
   ToggleButton,
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import { alpha } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
