@@ -13,7 +13,7 @@ import {
   Button,
 } from "@mui/material";
 import { keyframes } from "@mui/system";
-import type { Game } from "../data/mockOdds";
+import type { Game } from "../api/odds/route";
 import { bestForTeam, bestTotalsSide, formatAmerican } from "../utils/odds";
 
 import { useRouter } from "next/navigation";
