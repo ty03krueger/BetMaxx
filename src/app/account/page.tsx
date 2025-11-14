@@ -41,6 +41,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import SportsIcon from "@mui/icons-material/Sports";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import type { SavedLine } from "../../lib/userData";
 
 import { useAuth } from "../providers";
 import { db } from "../../firebase";
@@ -594,7 +595,7 @@ export default function AccountPage() {
     }
   };
 
-  const enriched: Required<
+  const savedLinesEnriched: Required<
     SavedLineEnriched & { _game?: Game | null }
   >[] = React.useMemo(() => {
     const lines = uDoc?.savedLines || [];
@@ -1089,7 +1090,7 @@ export default function AccountPage() {
                   </Typography>
                 ) : (uDoc?.savedLines?.length ?? 0) > 0 ? (
                   <Stack spacing={1}>
-                    {enriched.map((ln) => (
+                    {savedLinesEnriched.map((ln) => (
                       <SavedLineCard
                         key={`${ln.league}:${ln.id}:${ln.label}`}
                         ln={ln as any}
