@@ -9,8 +9,8 @@ type DetailView = "all" | "ml" | "ou";
 type Market = "Moneyline" | "Total";
 
 type OpenOpts = {
-  detailView: DetailView;        // "all" | "ml" | "ou"
-  market: Market;                // "Moneyline" | "Total"
+  detailView: DetailView; // "all" | "ml" | "ou"
+  market: Market;         // "Moneyline" | "Total"
 };
 
 type Ctx = {
@@ -22,11 +22,17 @@ const GameDialogContext = React.createContext<Ctx | null>(null);
 
 export function useGameDialog() {
   const ctx = React.useContext(GameDialogContext);
-  if (!ctx) throw new Error("useGameDialog must be used inside <GameDialogProvider>");
+  if (!ctx) {
+    throw new Error("useGameDialog must be used inside <GameDialogProvider>");
+  }
   return ctx;
 }
 
-export default function GameDialogProvider({ children }: { children: React.ReactNode }) {
+export default function GameDialogProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [open, setOpen] = React.useState(false);
   const [game, setGame] = React.useState<Game | null>(null);
   const [detailView, setDetailView] = React.useState<DetailView>("all");
@@ -39,21 +45,30 @@ export default function GameDialogProvider({ children }: { children: React.React
     setOpen(true);
   }, []);
 
-  const close = React.useCallback(() => setOpen(false), []);
+  const close = React.useCallback(() => {
+    setOpen(false);
+    setGame(null);
+  }, []);
 
-  const value = React.useMemo(() => ({ openWithGame, close }), [openWithGame, close]);
+  const value = React.useMemo(
+    () => ({ openWithGame, close }),
+    [openWithGame, close]
+  );
 
   return (
     <GameDialogContext.Provider value={value}>
       {children}
-      {/* Renders only when opened from anywhere */}
-      <GameDetail
-        game={game}
-        open={open && !!game}
-        onClose={close}
-        market={market}
-        detailView={detailView}
-      />
+
+      {/* Render the modal only when a game is selected */}
+      {game && (
+        <GameDetail
+          game={game}
+          open={open}
+          onClose={close}
+          market={market}
+          detailView={detailView}
+        />
+      )}
     </GameDialogContext.Provider>
   );
 }

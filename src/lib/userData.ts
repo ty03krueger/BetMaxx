@@ -16,17 +16,18 @@ export type SavedLine = {
   createdAt?: number; // store ms epoch in the array item
 };
 
+// Idempotent add: uses savedLines array on the user doc, prevents duplicates
 export async function addSavedLine(uid: string, line: SavedLine) {
   const ref = doc(db, "users", uid);
 
-  // The item we store in the array: NO serverTimestamp() here
   const item = {
     ...line,
     createdAt: Date.now(),
   };
 
-  // Ensure doc exists, then push the item and set a top-level server timestamp
   const snap = await getDoc(ref);
+
+  // If user doc doesn't exist yet, create it with the first saved line
   if (!snap.exists()) {
     await setDoc(ref, {
       uid,
@@ -37,7 +38,20 @@ export async function addSavedLine(uid: string, line: SavedLine) {
     return;
   }
 
-  // For existing docs, arrayUnion + top-level server timestamp
+  // If it exists, check for duplicate line.id
+  const data = snap.data() as { savedLines?: SavedLine[] } | undefined;
+  const existing = data?.savedLines || [];
+
+  const alreadyThere = existing.some((l) => l.id === line.id);
+  if (alreadyThere) {
+    // Already saved – just bump lastSavedAt for analytics and bail
+    await updateDoc(ref, {
+      lastSavedAt: serverTimestamp(),
+    });
+    return;
+  }
+
+  // Push new item + update lastSavedAt
   await updateDoc(ref, {
     savedLines: arrayUnion(item),
     lastSavedAt: serverTimestamp(),

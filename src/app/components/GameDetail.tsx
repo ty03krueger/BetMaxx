@@ -19,7 +19,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { keyframes } from "@mui/system";
 
-import type { Game } from "../data/mockOdds";
+import type { Game } from "../api/odds/route";
 import {
   sortedForTeam,
   formatAmerican,
@@ -54,28 +54,60 @@ type Props = {
   detailView?: DetailView;
 };
 
+/**
+ * Canonical URLs keyed by a normalized sportsbook key.
+ * Keys are *sluggy*: lowercased, no spaces, no "sportsbook" word.
+ */
 const BOOK_URLS: Record<string, string> = {
-  betonlineag: "https://www.betonline.ag/sportsbook",
+  draftkings: "https://sportsbook.draftkings.com",
+  fanduel: "https://sportsbook.fanduel.com",
   betmgm: "https://sports.az.betmgm.com/en/sports",
+  caesars: "https://www.caesars.com/sportsbook",
+  espnbet: "https://espnbet.com",
+  fanatics: "https://sportsbook.fanatics.com",
+  bet365: "https://www.bet365.com",
+  hardrockbet: "https://www.hardrock.bet",
+
+  // You can leave the old ones here or delete them – they simply won't be hit
+  betonlineag: "https://www.betonline.ag/sportsbook",
   betrivers: "https://www.betrivers.com",
   betus: "https://www.betus.com.pa/sportsbook",
   bovada: "https://www.bovada.lv/sports",
   williamhill_us: "https://www.caesars.com/sportsbook",
-  caesars: "https://www.caesars.com/sportsbook",
-  draftkings: "https://sportsbook.draftkings.com",
-  fanduel: "https://sportsbook.fanduel.com",
-  fanatics: "https://sportsbook.fanatics.com",
   lowvig: "https://www.lowvig.ag",
   mybookieag: "https://mybookie.ag/sportsbook",
   ballybet: "https://www.ballybet.com",
   betanysports: "https://www.betanysports.eu",
   betparx: "https://www.pa.betparx.com",
-  espnbet: "https://espnbet.com",
   fliff: "https://www.fliff.com",
-  hardrockbet: "https://www.hardrock.bet",
   rebet: "https://www.rebet.com",
-  bet365: "https://www.bet365.com",
 };
+
+/**
+ * Normalize the book label coming from the API/title into a key
+ * that matches BOOK_URLS:
+ *
+ *  - lowercase
+ *  - remove "sportsbook"
+ *  - strip non-alphanumeric
+ *  - remove spaces
+ *
+ * Examples:
+ *  "DraftKings"           -> "draftkings"
+ *  "FanDuel"              -> "fanduel"
+ *  "BetMGM"               -> "betmgm"
+ *  "Caesars Sportsbook"   -> "caesars"
+ *  "ESPN BET"             -> "espnbet"
+ *  "Fanatics Sportsbook"  -> "fanatics"
+ *  "Hard Rock Bet"        -> "hardrockbet"
+ */
+function normalizeBookKey(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/sportsbook/g, "")
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
 
 export default function GameDetail({
   game,
@@ -180,8 +212,8 @@ export default function GameDetail({
     line?: number;
     price?: number;
   }) {
-    const rawKey = options.book || "";
-    const normKey = rawKey.toLowerCase().trim();
+    const rawLabel = options.book || "";
+    const normKey = normalizeBookKey(rawLabel); // 🔑 use normalized label for URL + logging
 
     const url = BOOK_URLS[normKey];
 
@@ -199,6 +231,7 @@ export default function GameDetail({
     try {
       await addDoc(collection(db, "outboundClicks"), {
         bookKey: normKey,
+        rawBookLabel: rawLabel,
         sportKey,
         eventId,
         market: options.market,
@@ -218,6 +251,8 @@ export default function GameDetail({
       } catch (e) {
         console.error("Failed to open sportsbook URL", e);
       }
+    } else {
+      console.warn("No URL mapped for book:", rawLabel, "->", normKey);
     }
   }
 
@@ -596,7 +631,6 @@ export default function GameDetail({
                             idx === 0
                               ? "rgba(255,214,0,0.15)"
                               : "rgba(255,255,255,0.06)",
-                          transform: "translateY(-1px)",
                         },
                       }}
                       secondaryAction={
@@ -700,7 +734,6 @@ export default function GameDetail({
                             idx === 0
                               ? "rgba(255,214,0,0.15)"
                               : "rgba(255,255,255,0.06)",
-                          transform: "translateY(-1px)",
                         },
                       }}
                       secondaryAction={

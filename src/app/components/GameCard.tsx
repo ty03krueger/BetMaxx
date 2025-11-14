@@ -20,6 +20,13 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../providers";
 import { addSavedLine } from "../../lib/userData";
 
+// NEW: Firestore to check if this line is already saved
+import { db } from "../../firebase";
+import { doc, getDoc } from "firebase/firestore";
+
+// NEW: BetMaxx global alert/snackbar
+import { useAlert } from "../contexts/AlertProvider";
+
 type Props = {
   game: Game;
   onOpen: (game: Game) => void;
@@ -45,6 +52,43 @@ export default function GameCard({ game, onOpen, market }: Props) {
 
   const router = useRouter();
   const { user } = useAuth();
+  const { setAlert } = useAlert();
+
+  // Build a stable event + line id (same scheme as addSavedLine)
+  const eventId =
+    (game as any).eventId ??
+    (game as any).id ??
+    `${teamA}-${teamB}-${game.commenceTime}`;
+
+  const lineId = `${eventId}-${market === "Moneyline" ? "ML" : "TOTAL"}`;
+
+  // Track if this line is already saved for the current user
+  const [isSaved, setIsSaved] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function checkSaved() {
+      if (!user) {
+        if (!cancelled) setIsSaved(false);
+        return;
+      }
+      try {
+        const lineRef = doc(db, "users", user.uid, "savedLines", lineId);
+        const snap = await getDoc(lineRef);
+        if (!cancelled) setIsSaved(snap.exists());
+      } catch (e) {
+        console.error("Failed to check saved line state", e);
+        if (!cancelled) setIsSaved(false);
+      }
+    }
+
+    checkSaved();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, lineId]);
 
   let leftTitle = "";
   let leftSub = "";
@@ -87,15 +131,19 @@ export default function GameCard({ game, onOpen, market }: Props) {
 
   const handleSaveLine = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // If already saved, do nothing (button is also disabled)
+    if (isSaved) return;
+
     if (!user) {
+      setAlert({
+        open: true,
+        message: "Sign in to save lines to your account.",
+        type: "info",
+      });
       router.push("/auth");
       return;
     }
-
-    const eventId =
-      (game as any).eventId ??
-      (game as any).id ??
-      `${teamA}-${teamB}-${game.commenceTime}`;
 
     const rawLeague = String(
       (game as any).league ?? (game as any).sportKey ?? ""
@@ -108,17 +156,26 @@ export default function GameCard({ game, onOpen, market }: Props) {
 
     try {
       await addSavedLine(user.uid, {
-        id: `${eventId}-${market === "Moneyline" ? "ML" : "TOTAL"}`,
+        id: lineId,
         league,
         label: `${teamA} @ ${teamB} — ${
           market === "Moneyline" ? "ML" : "Total"
         }`,
       });
-      // eslint-disable-next-line no-alert
-      alert("Saved! Check your Account → Saved Lines.");
+
+      setIsSaved(true);
+      setAlert({
+        open: true,
+        message: "Line saved! Check Account → Saved Lines.",
+        type: "success",
+      });
     } catch (err: any) {
-      // eslint-disable-next-line no-alert
-      alert(err?.message || "Failed to save line");
+      console.error(err);
+      setAlert({
+        open: true,
+        message: err?.message || "Failed to save line.",
+        type: "error",
+      });
     }
   };
 
@@ -338,12 +395,21 @@ export default function GameCard({ game, onOpen, market }: Props) {
           {/* Save line */}
           <Box sx={{ mt: 1.25, display: "flex", justifyContent: "flex-end" }}>
             <Button
-              variant="outlined"
+              component="div"            // 👈 render as div to avoid nested <button>
+              variant={isSaved ? "contained" : "outlined"}
               size="small"
               onClick={handleSaveLine}
-              sx={{ borderRadius: 999 }}
+              disabled={isSaved}
+              sx={{
+                borderRadius: 999,
+                cursor: isSaved ? "default" : "pointer",
+                ...(isSaved && {
+                  bgcolor: "rgba(76,175,80,0.18)",
+                  borderColor: "rgba(76,175,80,0.4)",
+                }),
+              }}
             >
-              Save line
+              {isSaved ? "Saved" : "Save line"}
             </Button>
           </Box>
         </CardContent>

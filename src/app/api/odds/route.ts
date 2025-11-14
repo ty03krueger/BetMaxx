@@ -28,6 +28,20 @@ export type Game = {
   td?: TDBest[]; // Anytime TD (optional if not requested / not available)
 };
 
+// 🔹 BetMaxx sportsbook whitelist (provider `key` values, lowercased)
+const BOOKMAKER_WHITELIST = new Set<string>([
+  "draftkings",
+  "fanduel",
+  "betmgm",
+  "caesars",
+  "williamhill_us",
+  "espnbet",
+  "fanatics",
+  "betrivers",
+  "hardrockbet",
+  "ballybet",
+]);
+
 // Server cache
 export const revalidate = 60;
 
@@ -58,7 +72,9 @@ export async function GET(req: Request) {
   const marketsParam =
     urlIn.searchParams.get("markets") || "h2h,totals"; // allow player_anytime_td to be requested
   const bookmakersParam = urlIn.searchParams.get("bookmakers"); // optional limiter
-  const regions = urlIn.searchParams.get("regions") || "us";
+
+  // 🔹 DEFAULT: hit both US & US2 regions unless caller overrides
+  const regions = urlIn.searchParams.get("regions") || "us,us2";
   const oddsFormat = urlIn.searchParams.get("oddsFormat") || "american";
   const dateFormat = urlIn.searchParams.get("dateFormat") || "iso";
 
@@ -84,8 +100,13 @@ export async function GET(req: Request) {
     const games: Game[] = data.map((e) => {
       const teams: [string, string] = [e.away_team, e.home_team];
 
+      // 🔹 Apply bookmaker whitelist once, reuse for all markets
+      const allowedBookmakers: ApiBookmaker[] = e.bookmakers.filter((b) =>
+        BOOKMAKER_WHITELIST.has(b.key.toLowerCase())
+      );
+
       // --- Moneyline ---
-      const books: BookOdds[] = e.bookmakers
+      const books: BookOdds[] = allowedBookmakers
         .map((b) => {
           const h2h = b.markets.find((m) => m.key === "h2h");
           if (!h2h) return null;
@@ -99,7 +120,7 @@ export async function GET(req: Request) {
         .filter(Boolean) as BookOdds[];
 
       // --- Totals ---
-      const totals: BookTotals[] = e.bookmakers
+      const totals: BookTotals[] = allowedBookmakers
         .map((b) => {
           const tot = b.markets.find((m) => m.key === "totals");
           if (!tot) return null;
@@ -126,10 +147,10 @@ export async function GET(req: Request) {
       // --- Anytime TD (optional) ---
       let td: TDBest[] | undefined = undefined;
       if (includeTD) {
-        // aggregate per player across all books, then pick the best price/book
+        // aggregate per player across all allowed books, then pick the best price/book
         const perPlayer: Map<string, { book: string; price: number }> = new Map();
 
-        for (const b of e.bookmakers) {
+        for (const b of allowedBookmakers) {
           const m = b.markets.find((m) => m.key === "player_anytime_td");
           if (!m) continue;
 
