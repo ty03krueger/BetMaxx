@@ -16,7 +16,7 @@ const BooksContext = React.createContext<BooksContextValue | undefined>(
 );
 
 type BooksProviderProps = {
-  user: User | null;
+  user?: User | null; // ✅ make optional
   children: React.ReactNode;
 };
 
@@ -31,7 +31,7 @@ type BooksProviderProps = {
  * - Listens for "betmaxx:books:update" and applies it for the current user.
  * - When logged out, clears preferences in context (no guest carryover).
  */
-export function BooksProvider({ user, children }: BooksProviderProps) {
+export function BooksProvider({ user = null, children }: BooksProviderProps) {
   const [preferredBooks, setPreferredBooksState] = React.useState<string[]>([]);
 
   // Hydrate whenever the authenticated user changes
