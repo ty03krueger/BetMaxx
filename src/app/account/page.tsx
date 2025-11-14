@@ -26,9 +26,11 @@ import {
   FormControlLabel,
   ToggleButtonGroup,
   ToggleButton,
+  useMediaQuery,
 } from "@mui/material";
-import Grid from "@mui/material/Grid";
-import { alpha } from "@mui/material/styles";
+import { GridLegacy as Grid } from "@mui/material";
+
+import { alpha, useTheme } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
@@ -641,6 +643,9 @@ export default function AccountPage() {
       )
       .slice(0, 12);
   }, [uDoc?.favorites?.teams, boards.nfl, boards.ncaaf]);
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
 
   // Not signed in
   if (!loading && !user) {
@@ -702,628 +707,680 @@ export default function AccountPage() {
     );
   }
 
-  return (
-    <Stack spacing={3}>
-      {/* Page Title */}
-      <Stack
-        spacing={1}
-        alignItems="center"
-        textAlign="center"
-      >
-        <Typography
-          variant="overline"
-          sx={{ letterSpacing: 2, opacity: 0.8 }}
-        >
-          BetMaxx
-        </Typography>
-        <Typography
-          variant="h4"
-          sx={{ fontWeight: 900, lineHeight: 1.1 }}
-        >
-          Your Account
-        </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
-          Customize your experience. Save what matters. Win smarter.
-        </Typography>
-      </Stack>
 
-      <GoldDivider />
 
-      <Grid container spacing={2}>
-        {/* Profile / Overview */}
-        <Grid item xs={12} md={5}>
-          <Card
-            variant="outlined"
+  // ---- Reusable card blocks so we can lay them out differently on mobile vs desktop ----
+  const profileCard = (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 4,
+        height: "100%",
+        backgroundColor: alpha("#FFFFFF", 0.03),
+        border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
+      }}
+    >
+      <CardContent>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar
             sx={{
-              borderRadius: 4,
-              height: "100%",
-              backgroundColor: alpha("#FFFFFF", 0.03),
-              border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
+              width: 64,
+              height: 64,
+              bgcolor: alpha("#FFD600", 0.15),
+              color: "#FFD600",
+              fontWeight: 800,
             }}
           >
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Avatar
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    bgcolor: alpha("#FFD600", 0.15),
-                    color: "#FFD600",
-                    fontWeight: 800,
-                  }}
-                >
-                  {uDoc?.displayName?.charAt(0)?.toUpperCase() ||
-                    uDoc?.email?.charAt(0)?.toUpperCase() ||
-                    "U"}
-                </Avatar>
-                <Stack spacing={0.25}>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 800 }}
-                  >
-                    {uDoc?.displayName || "New User"}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    {uDoc?.email || "—"}
-                  </Typography>
-                </Stack>
-                <Box sx={{ ml: "auto" }}>
-                  <Tooltip title="Edit profile (soon)">
-                    <span>
-                      <IconButton disabled>
-                        <EditIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Box>
-              </Stack>
-
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ mt: 2, flexWrap: "wrap" }}
-              >
-                <Chip
-                  size="small"
-                  label={`Joined: ${formatJoined(
-                    uDoc?.createdAt
-                  )}`}
-                  variant="outlined"
-                />
-                <Chip
-                  size="small"
-                  label="Beta Access"
-                  variant="outlined"
-                />
-              </Stack>
-
-              <Divider
-                sx={{
-                  my: 2,
-                  borderColor: alpha("#FFFFFF", 0.14),
-                }}
-              />
-
-              <Stack spacing={1}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ opacity: 0.8 }}
-                >
-                  Quick Links
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    component={Link}
-                    href="/nfl"
-                    variant="outlined"
-                    size="small"
-                    sx={{ borderRadius: 999 }}
-                  >
-                    NFL Odds
-                  </Button>
-                  <Button
-                    component={Link}
-                    href="/cfb"
-                    variant="outlined"
-                    size="small"
-                    sx={{ borderRadius: 999 }}
-                  >
-                    CFB Odds
-                  </Button>
-                  <Button
-                    component={Link}
-                    href="/"
-                    variant="outlined"
-                    size="small"
-                    sx={{ borderRadius: 999 }}
-                  >
-                    Home
-                  </Button>
-                </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Favorites / Saved */}
-        <Grid item xs={12} md={7}>
-          <Stack spacing={2}>
-            {/* Favorite Teams */}
-            <Card
-              variant="outlined"
-              sx={{
-                borderRadius: 4,
-                backgroundColor: alpha("#FFFFFF", 0.03),
-                border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
-              }}
+            {uDoc?.displayName?.charAt(0)?.toUpperCase() ||
+              uDoc?.email?.charAt(0)?.toUpperCase() ||
+              "U"}
+          </Avatar>
+          <Stack spacing={0.25}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800 }}
             >
-              <CardContent>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  mb={1}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                  >
-                    <FavoriteBorderIcon fontSize="small" />
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 800 }}
-                    >
-                      Favorite Teams
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      sx={{ borderRadius: 999 }}
-                      onClick={openFavModal}
-                    >
-                      Manage
-                    </Button>
-                  </Stack>
-                </Stack>
-
-                {fetching ? (
-                  <Typography
-                    variant="body2"
-                    sx={{ opacity: 0.7 }}
-                  >
-                    Loading…
-                  </Typography>
-                ) : (uDoc?.favorites?.teams?.length ?? 0) > 0 ? (
-                  <Stack spacing={1.5}>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                    >
-                      {uDoc!.favorites!.teams!.map((t) => (
-                        <Chip
-                          key={t}
-                          label={t}
-                          variant="outlined"
-                        />
-                      ))}
-                    </Stack>
-
-                    <Divider
-                      sx={{
-                        borderColor: alpha("#FFFFFF", 0.14),
-                      }}
-                    />
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ opacity: 0.8 }}
-                    >
-                      Upcoming (next 9 days)
-                    </Typography>
-
-                    {favoriteUpcoming.length > 0 ? (
-                      <Stack spacing={1}>
-                        {favoriteUpcoming.map((g) => {
-                          const [away, home] = g.teams || [];
-                          const when = new Date(
-                            (g as any).commenceTime
-                          ).toLocaleString(undefined, {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          });
-                          const league =
-                            (g as any).league ||
-                            (g as any).sportKey ||
-                            "";
-                          return (
-                            <Card
-                              key={g.eventId}
-                              variant="outlined"
-                              sx={{
-                                borderRadius: 2,
-                                borderColor: alpha(
-                                  "#FFD600",
-                                  0.2
-                                ),
-                                background:
-                                  "linear-gradient(180deg, rgba(17,20,26,0.9), rgba(14,16,20,0.96))",
-                              }}
-                            >
-                              <CardContent
-                                sx={{
-                                  py: 1.25,
-                                  px: 1.5,
-                                }}
-                              >
-                                <Stack
-                                  direction="row"
-                                  alignItems="center"
-                                  justifyContent="space-between"
-                                  gap={2}
-                                >
-                                  <Stack
-                                    spacing={0.25}
-                                    sx={{ minWidth: 0 }}
-                                  >
-                                    <Typography
-                                      variant="caption"
-                                      sx={{ opacity: 0.8 }}
-                                    >
-                                      {String(
-                                        league
-                                      ).toUpperCase()}{" "}
-                                      · {when}
-                                    </Typography>
-                                    <Typography
-                                      variant="body2"
-                                      sx={{
-                                        fontWeight: 800,
-                                      }}
-                                      noWrap
-                                    >
-                                      {away} @ {home}
-                                    </Typography>
-                                  </Stack>
-                                  <Button
-                                    component={Link}
-                                    href={
-                                      sportKeyForLeague(
-                                        league
-                                      ) === "ncaaf"
-                                        ? `/cfb?game=${g.eventId}`
-                                        : `/nfl?game=${g.eventId}`
-                                    }
-                                    size="small"
-                                    variant="contained"
-                                    sx={{
-                                      borderRadius: 999,
-                                    }}
-                                  >
-                                    View Odds
-                                  </Button>
-                                </Stack>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
-                      </Stack>
-                    ) : (
-                      <Typography
-                        variant="body2"
-                        sx={{ opacity: 0.7 }}
-                      >
-                        No games found for your teams in the
-                        next 9 days.
-                      </Typography>
-                    )}
-                  </Stack>
-                ) : (
-                  <EmptyNote
-                    icon={<StarBorderIcon />}
-                    title="No favorites yet"
-                    body="Pick teams to surface their games across BetMaxx."
-                    ctaText="Browse NFL"
-                    ctaHref="/nfl"
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Saved Lines */}
-            <Card
-              variant="outlined"
-              sx={{
-                borderRadius: 4,
-                backgroundColor: alpha("#FFFFFF", 0.03),
-                border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
-              }}
-            >
-              <CardContent>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  mb={1}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                  >
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 800 }}
-                    >
-                      Saved Lines
-                    </Typography>
-                  </Stack>
-                  {loadingGame && (
-                    <CircularProgress size={18} />
-                  )}
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    disabled
-                    sx={{ borderRadius: 999 }}
-                  >
-                    Add Line
-                  </Button>
-                </Stack>
-
-                {fetching ? (
-                  <Typography
-                    variant="body2"
-                    sx={{ opacity: 0.7 }}
-                  >
-                    Loading…
-                  </Typography>
-                ) : (uDoc?.savedLines?.length ?? 0) > 0 ? (
-                  <Stack spacing={1}>
-                    {savedLinesEnriched.map((ln) => (
-                      <SavedLineCard
-                        key={`${ln.league}:${ln.id}:${ln.label}`}
-                        ln={ln}
-                        game={ln._game}
-                        onOpen={() => openSavedLine(ln)}
-                        onRemove={() => removeSavedLine(ln)}
-                      />
-                    ))}
-                  </Stack>
-                ) : (
-                  <EmptyNote
-                    icon={<SportsFootballIcon />}
-                    title="No saved lines yet"
-                    body="Save a moneyline or total you’re tracking to find it fast later."
-                    ctaText="View Today’s Games"
-                    ctaHref="/nfl"
-                  />
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Favorite Books */}
-            <Card
-              variant="outlined"
-              sx={{
-                borderRadius: 4,
-                backgroundColor: alpha("#FFFFFF", 0.03),
-                border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
-              }}
-            >
-              <CardContent>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  mb={1}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                  >
-                    <ShieldOutlinedIcon fontSize="small" />
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 800 }}
-                    >
-                      My Books
-                    </Typography>
-                  </Stack>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    sx={{ borderRadius: 999 }}
-                    onClick={() => setBooksOpen(true)}
-                  >
-                    Manage
-                  </Button>
-                </Stack>
-
-                {(uDoc?.favorites?.books?.length ?? 0) > 0 ? (
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    flexWrap="wrap"
-                  >
-                    {uDoc!.favorites!.books!.map((bk) => (
-                      <Chip
-                        key={bk}
-                        label={bookLabel(bk)}
-                        variant="outlined"
-                      />
-                    ))}
-                  </Stack>
-                ) : (
-                  <EmptyNote
-                    icon={<ShieldOutlinedIcon />}
-                    title="No saved books yet"
-                    body="Pick your preferred sportsbooks to highlight their lines first."
-                    ctaText="Set Preferences"
-                    ctaHref="/account"
-                  />
-                )}
-              </CardContent>
-            </Card>
+              {uDoc?.displayName || "New User"}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              {uDoc?.email || "—"}
+            </Typography>
           </Stack>
-        </Grid>
-      </Grid>
+          <Box sx={{ ml: "auto" }}>
+            <Tooltip title="Edit profile (soon)">
+              <span>
+                <IconButton disabled>
+                  <EditIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+        </Stack>
 
-      {/* Saved-line modal */}
-      <GameDetail
-        game={selectedGame}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        market={market}
-        detailView={detailView}
-      />
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ mt: 2, flexWrap: "wrap" }}
+        >
+          <Chip
+            size="small"
+            label={`Joined: ${formatJoined(
+              uDoc?.createdAt
+            )}`}
+            variant="outlined"
+          />
+          <Chip
+            size="small"
+            label="Beta Access"
+            variant="outlined"
+          />
+        </Stack>
 
-      {/* Favorite Teams Modal */}
-      <FavoriteTeamsModal
-        open={favOpen}
-        onClose={() => setFavOpen(false)}
-        league={favLeague}
-        onLeagueChange={(v) => setFavLeague(v)}
-        search={favSearch}
-        onSearch={setFavSearch}
-        available={availableTeams}
-        selected={selectedTeams}
-        onToggleTeam={async (team) => {
-          if (!uDoc || !user) return;
-          const current = new Set(uDoc.favorites?.teams || []);
-          if (current.has(team)) current.delete(team);
-          else current.add(team);
-          const next = Array.from(current);
-          setUDoc({
-            ...uDoc,
-            favorites: { ...(uDoc.favorites || {}), teams: next },
-          });
-          try {
-            const ref = doc(db, "users", user.uid);
-            await updateDoc(ref, {
+        <Divider
+          sx={{
+            my: 2,
+            borderColor: alpha("#FFFFFF", 0.14),
+          }}
+        />
+
+        <Stack spacing={1}>
+          <Typography
+            variant="subtitle2"
+            sx={{ opacity: 0.8 }}
+          >
+            Quick Links
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <Button
+              component={Link}
+              href="/nfl"
+              variant="outlined"
+              size="small"
+              sx={{ borderRadius: 999 }}
+            >
+              NFL Odds
+            </Button>
+            <Button
+              component={Link}
+              href="/cfb"
+              variant="outlined"
+              size="small"
+              sx={{ borderRadius: 999 }}
+            >
+              CFB Odds
+            </Button>
+            <Button
+              component={Link}
+              href="/"
+              variant="outlined"
+              size="small"
+              sx={{ borderRadius: 999 }}
+            >
+              Home
+            </Button>
+          </Stack>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+
+  const favoriteTeamsCard = (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 4,
+        backgroundColor: alpha("#FFFFFF", 0.03),
+        border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
+      }}
+    >
+      <CardContent>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={1}
+        >
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+          >
+            <FavoriteBorderIcon fontSize="small" />
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800 }}
+            >
+              Favorite Teams
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<AddIcon />}
+              sx={{ borderRadius: 999 }}
+              onClick={openFavModal}
+            >
+              Manage
+            </Button>
+          </Stack>
+        </Stack>
+
+        {fetching ? (
+          <Typography
+            variant="body2"
+            sx={{ opacity: 0.7 }}
+          >
+            Loading…
+          </Typography>
+        ) : (uDoc?.favorites?.teams?.length ?? 0) > 0 ? (
+          <Stack spacing={1.5}>
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+            >
+              {uDoc!.favorites!.teams!.map((t) => (
+                <Chip
+                  key={t}
+                  label={t}
+                  variant="outlined"
+                />
+              ))}
+            </Stack>
+
+            <Divider
+              sx={{
+                borderColor: alpha("#FFFFFF", 0.14),
+              }}
+            />
+            <Typography
+              variant="subtitle2"
+              sx={{ opacity: 0.8 }}
+            >
+              Upcoming (next 9 days)
+            </Typography>
+
+            {favoriteUpcoming.length > 0 ? (
+              <Stack spacing={1}>
+                {favoriteUpcoming.map((g) => {
+                  const [away, home] = g.teams || [];
+                  const when = new Date(
+                    (g as any).commenceTime
+                  ).toLocaleString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
+                  const league =
+                    (g as any).league ||
+                    (g as any).sportKey ||
+                    "";
+                  return (
+                    <Card
+                      key={g.eventId}
+                      variant="outlined"
+                      sx={{
+                        borderRadius: 2,
+                        borderColor: alpha(
+                          "#FFD600",
+                          0.2
+                        ),
+                        background:
+                          "linear-gradient(180deg, rgba(17,20,26,0.9), rgba(14,16,20,0.96))",
+                      }}
+                    >
+                      <CardContent
+                        sx={{
+                          py: 1.25,
+                          px: 1.5,
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          justifyContent="space-between"
+                          gap={2}
+                        >
+                          <Stack
+                            spacing={0.25}
+                            sx={{ minWidth: 0 }}
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{ opacity: 0.8 }}
+                            >
+                              {String(
+                                league
+                              ).toUpperCase()}{" "}
+                              · {when}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 800,
+                              }}
+                              noWrap
+                            >
+                              {away} @ {home}
+                            </Typography>
+                          </Stack>
+                          <Button
+                            component={Link}
+                            href={
+                              sportKeyForLeague(
+                                league
+                              ) === "ncaaf"
+                                ? `/cfb?game=${g.eventId}`
+                                : `/nfl?game=${g.eventId}`
+                            }
+                            size="small"
+                            variant="contained"
+                            sx={{
+                              borderRadius: 999,
+                            }}
+                          >
+                            View Odds
+                          </Button>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Typography
+                variant="body2"
+                sx={{ opacity: 0.7 }}
+              >
+                No games found for your teams in the
+                next 9 days.
+              </Typography>
+            )}
+          </Stack>
+        ) : (
+          <EmptyNote
+            icon={<StarBorderIcon />}
+            title="No favorites yet"
+            body="Pick teams to surface their games across BetMaxx."
+            ctaText="Browse NFL"
+            ctaHref="/nfl"
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const savedLinesCard = (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 4,
+        backgroundColor: alpha("#FFFFFF", 0.03),
+        border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
+      }}
+    >
+      <CardContent>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={1}
+        >
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+          >
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800 }}
+            >
+              Saved Lines
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {loadingGame && (
+              <CircularProgress size={18} />
+            )}
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<AddIcon />}
+              disabled
+              sx={{ borderRadius: 999 }}
+            >
+              Add Line
+            </Button>
+          </Stack>
+        </Stack>
+
+        {fetching ? (
+          <Typography
+            variant="body2"
+            sx={{ opacity: 0.7 }}
+          >
+            Loading…
+          </Typography>
+        ) : (uDoc?.savedLines?.length ?? 0) > 0 ? (
+          <Stack spacing={1}>
+            {savedLinesEnriched.map((ln) => (
+              <SavedLineCard
+                key={`${ln.league}:${ln.id}:${ln.label}`}
+                ln={ln}
+                game={ln._game}
+                onOpen={() => openSavedLine(ln)}
+                onRemove={() => removeSavedLine(ln)}
+              />
+            ))}
+          </Stack>
+        ) : (
+          <EmptyNote
+            icon={<SportsFootballIcon />}
+            title="No saved lines yet"
+            body="Save a moneyline or total you’re tracking to find it fast later."
+            ctaText="View Today’s Games"
+            ctaHref="/nfl"
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const booksCard = (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 4,
+        backgroundColor: alpha("#FFFFFF", 0.03),
+        border: `1px solid ${alpha("#FFFFFF", 0.1)}`,
+      }}
+    >
+      <CardContent>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={1}
+        >
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+          >
+            <ShieldOutlinedIcon fontSize="small" />
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800 }}
+            >
+              My Books
+            </Typography>
+          </Stack>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<AddIcon />}
+            sx={{ borderRadius: 999 }}
+            onClick={() => setBooksOpen(true)}
+          >
+            Manage
+          </Button>
+        </Stack>
+
+        {(uDoc?.favorites?.books?.length ?? 0) > 0 ? (
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+          >
+            {uDoc!.favorites!.books!.map((bk) => (
+              <Chip
+                key={bk}
+                label={bookLabel(bk)}
+                variant="outlined"
+              />
+            ))}
+          </Stack>
+        ) : (
+          <EmptyNote
+            icon={<ShieldOutlinedIcon />}
+            title="No saved books yet"
+            body="Pick your preferred sportsbooks to highlight their lines first."
+            ctaText="Set Preferences"
+            ctaHref="/account"
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <Box
+      sx={{
+        maxWidth: 960,
+        mx: "auto",
+        px: { xs: 2, md: 3 },
+        py: { xs: 3, md: 4 },
+      }}
+    >
+      <Stack spacing={2}>
+        {/* Header (NFL-style responsive title, but Account-specific) */}
+        <Stack spacing={1.5}>
+          <Typography
+            variant="overline"
+            sx={{ letterSpacing: 2, opacity: 0.8 }}
+          >
+            BetMaxx
+          </Typography>
+
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ gap: 1 }}
+          >
+            {/* Desktop: full title; Mobile: short label */}
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 900,
+                lineHeight: 1.1,
+                display: { xs: "none", sm: "block" },
+              }}
+            >
+              Your Account
+            </Typography>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 900,
+                lineHeight: 1.1,
+                display: { xs: "block", sm: "none" },
+              }}
+            >
+              Account
+            </Typography>
+          </Stack>
+
+          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+            Customize your experience. Save what matters. Win smarter.
+          </Typography>
+        </Stack>
+
+        <GoldDivider />
+
+        {/* Layout: mobile = stacked, desktop = 2-column grid */}
+        {isDesktop ? (
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={5}>
+              {profileCard}
+            </Grid>
+            <Grid item xs={12} md={7}>
+              <Stack spacing={2}>
+                {favoriteTeamsCard}
+                {savedLinesCard}
+                {booksCard}
+              </Stack>
+            </Grid>
+          </Grid>
+        ) : (
+          <Stack spacing={2}>
+            {profileCard}
+            {favoriteTeamsCard}
+            {savedLinesCard}
+            {booksCard}
+          </Stack>
+        )}
+
+        {/* Saved-line modal */}
+        <GameDetail
+          game={selectedGame}
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          market={market}
+          detailView={detailView}
+        />
+
+        {/* Favorite Teams Modal */}
+        <FavoriteTeamsModal
+          open={favOpen}
+          onClose={() => setFavOpen(false)}
+          league={favLeague}
+          onLeagueChange={(v) => setFavLeague(v)}
+          search={favSearch}
+          onSearch={setFavSearch}
+          available={availableTeams}
+          selected={selectedTeams}
+          onToggleTeam={async (team) => {
+            if (!uDoc || !user) return;
+            const current = new Set(uDoc.favorites?.teams || []);
+            if (current.has(team)) current.delete(team);
+            else current.add(team);
+            const next = Array.from(current);
+            setUDoc({
+              ...uDoc,
               favorites: { ...(uDoc.favorites || {}), teams: next },
             });
-          } catch (e) {
-            console.error(e);
-          }
-        }}
-      />
+            try {
+              const ref = doc(db, "users", user.uid);
+              await updateDoc(ref, {
+                favorites: { ...(uDoc.favorites || {}), teams: next },
+              });
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+        />
 
-      {/* Favorite Books Modal (stores KEYS) */}
-      <FavoriteBooksModal
-        open={booksOpen}
-        onClose={() => setBooksOpen(false)}
-        search={booksSearch}
-        onSearch={setBooksSearch}
-        catalog={BOOK_CATALOG}
-        selectedKeys={selectedBooks}
-        onToggleKey={async (key) => {
-          if (!uDoc || !user) return;
+        {/* Favorite Books Modal (stores KEYS) */}
+        <FavoriteBooksModal
+          open={booksOpen}
+          onClose={() => setBooksOpen(false)}
+          search={booksSearch}
+          onSearch={setBooksSearch}
+          catalog={BOOK_CATALOG}
+          selectedKeys={selectedBooks}
+          onToggleKey={async (key) => {
+            if (!uDoc || !user) return;
 
-          // base off current context value so everything is in sync
-          const current = new Set(preferredBooks);
-          if (current.has(key)) current.delete(key);
-          else current.add(key);
-          const next = Array.from(current).sort();
+            // base off current context value so everything is in sync
+            const current = new Set(preferredBooks);
+            if (current.has(key)) current.delete(key);
+            else current.add(key);
+            const next = Array.from(current).sort();
 
-          // update Firestore favorites.books
-          const nextFavorites = {
-            ...(uDoc.favorites || {}),
-            books: next,
-          };
-          setUDoc({ ...uDoc, favorites: nextFavorites });
-          try {
-            const ref = doc(db, "users", user.uid);
-            await updateDoc(ref, { favorites: nextFavorites });
-          } catch (e) {
-            console.error(e);
-          }
+            // update Firestore favorites.books
+            const nextFavorites = {
+              ...(uDoc.favorites || {}),
+              books: next,
+            };
+            setUDoc({ ...uDoc, favorites: nextFavorites });
+            try {
+              const ref = doc(db, "users", user.uid);
+              await updateDoc(ref, { favorites: nextFavorites });
+            } catch (e) {
+              console.error(e);
+            }
 
-          // update global per-user books via context
-          setPreferredBooks(next);
+            // update global per-user books via context
+            setPreferredBooks(next);
 
-          // 🔁 ALSO persist to localStorage + fire event so odds pages survive hard refresh
-          try {
-            localStorage.setItem("betmaxx:books", JSON.stringify(next));
-          } catch {}
-          try {
-            window.dispatchEvent(
-              new CustomEvent("betmaxx:books:update", {
-                detail: { books: next },
-              })
-            );
-          } catch {}
-        }}
-        onSelectAll={async () => {
-          if (!uDoc || !user) return;
-          const next = BOOK_CATALOG.map((b) => b.key).sort();
+            // 🔁 ALSO persist to localStorage + fire event so odds pages survive hard refresh
+            try {
+              localStorage.setItem("betmaxx:books", JSON.stringify(next));
+            } catch {}
+            try {
+              window.dispatchEvent(
+                new CustomEvent("betmaxx:books:update", {
+                  detail: { books: next },
+                })
+              );
+            } catch {}
+          }}
+          onSelectAll={async () => {
+            if (!uDoc || !user) return;
+            const next = BOOK_CATALOG.map((b) => b.key).sort();
 
-          const nextFavorites = {
-            ...(uDoc.favorites || {}),
-            books: next,
-          };
-          setUDoc({ ...uDoc, favorites: nextFavorites });
-          try {
-            const ref = doc(db, "users", user.uid);
-            await updateDoc(ref, { favorites: nextFavorites });
-          } catch (e) {
-            console.error(e);
-          }
+            const nextFavorites = {
+              ...(uDoc.favorites || {}),
+              books: next,
+            };
+            setUDoc({ ...uDoc, favorites: nextFavorites });
+            try {
+              const ref = doc(db, "users", user.uid);
+              await updateDoc(ref, { favorites: nextFavorites });
+            } catch (e) {
+              console.error(e);
+            }
 
-          setPreferredBooks(next);
+            setPreferredBooks(next);
 
-          // persist + broadcast
-          try {
-            localStorage.setItem("betmaxx:books", JSON.stringify(next));
-          } catch {}
-          try {
-            window.dispatchEvent(
-              new CustomEvent("betmaxx:books:update", {
-                detail: { books: next },
-              })
-            );
-          } catch {}
-        }}
-        onClearAll={async () => {
-          if (!uDoc || !user) return;
-          const next: string[] = [];
-          const nextFavorites = {
-            ...(uDoc.favorites || {}),
-            books: next,
-          };
-          setUDoc({ ...uDoc, favorites: nextFavorites });
-          try {
-            const ref = doc(db, "users", user.uid);
-            await updateDoc(ref, { favorites: nextFavorites });
-          } catch (e) {
-            console.error(e);
-          }
+            // persist + broadcast
+            try {
+              localStorage.setItem("betmaxx:books", JSON.stringify(next));
+            } catch {}
+            try {
+              window.dispatchEvent(
+                new CustomEvent("betmaxx:books:update", {
+                  detail: { books: next },
+                })
+              );
+            } catch {}
+          }}
+          onClearAll={async () => {
+            if (!uDoc || !user) return;
+            const next: string[] = [];
+            const nextFavorites = {
+              ...(uDoc.favorites || {}),
+              books: next,
+            };
+            setUDoc({ ...uDoc, favorites: nextFavorites });
+            try {
+              const ref = doc(db, "users", user.uid);
+              await updateDoc(ref, { favorites: nextFavorites });
+            } catch (e) {
+              console.error(e);
+            }
 
-          setPreferredBooks(next);
+            setPreferredBooks(next);
 
-          // persist + broadcast
-          try {
-            localStorage.setItem("betmaxx:books", JSON.stringify(next));
-          } catch {}
-          try {
-            window.dispatchEvent(
-              new CustomEvent("betmaxx:books:update", {
-                detail: { books: next },
-              })
-            );
-          } catch {}
-        }}
-      />
-    </Stack>
+            // persist + broadcast
+            try {
+              localStorage.setItem("betmaxx:books", JSON.stringify(next));
+            } catch {}
+            try {
+              window.dispatchEvent(
+                new CustomEvent("betmaxx:books:update", {
+                  detail: { books: next },
+                })
+              );
+            } catch {}
+          }}
+        />
+      </Stack>
+    </Box>
   );
 }
 

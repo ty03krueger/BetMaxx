@@ -121,11 +121,17 @@ export default function CollegeFootballPage() {
     view === "all" ? "All Games" : view === "ml" ? "Moneyline" : "O/U";
 
   const metaSubtitle = React.useMemo(() => {
-    const parts: string[] = [viewLabel];
+    const parts: string[] = [];
     if (query) parts.push(`Search “${query}”`);
     if (selectedConfs.size > 0) parts.push(`${selectedConfs.size} conf`);
+    if (parts.length === 0) return "";
     return parts.join(" · ");
-  }, [viewLabel, query, selectedConfs]);
+  }, [query, selectedConfs]);
+
+  const conferenceChipLabel =
+    selectedConfs.size > 0
+      ? `Conference (${selectedConfs.size})`
+      : "Select Conference";
 
   const { openWithGame } = useGameDialog();
 
@@ -140,55 +146,19 @@ export default function CollegeFootballPage() {
     <Stack spacing={2}>
       {/* Header */}
       <Stack spacing={1.25}>
-        {/* Top row: CFB + conference + refresh */}
+        {/* Top row: CFB title + refresh */}
         <Stack
           direction="row"
           alignItems="center"
           justifyContent="space-between"
           sx={{ minWidth: 0 }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ minWidth: 0, overflow: "hidden" }}
+          <Typography
+            variant="h4"
+            sx={{ fontWeight: 700, flexShrink: 0 }}
           >
-            <Typography
-              variant="h4"
-              sx={{ fontWeight: 700, flexShrink: 0 }}
-            >
-              CFB
-            </Typography>
-
-            <Chip
-              label={
-                selectedConfs.size
-                  ? `Conference (${selectedConfs.size})`
-                  : "Select Conference"
-              }
-              onClick={handleOpenConfs}
-              variant="outlined"
-              color={selectedConfs.size ? "primary" : "default"}
-              sx={{
-                borderRadius: 999,
-                flexShrink: 0,
-              }}
-            />
-
-            {/* Quick chips: only show on sm+ to avoid overflow on mobile */}
-            <Stack
-              direction="row"
-              spacing={0.75}
-              sx={{ display: { xs: "none", sm: "flex" } }}
-            >
-              <Chip label="P5" variant="outlined" onClick={selectP5} />
-              <Chip label="G5" variant="outlined" onClick={selectG5} />
-              <Chip label="Ind" variant="outlined" onClick={selectInd} />
-              {selectedConfs.size > 0 && (
-                <Chip label="Clear" variant="outlined" onClick={clearConfs} />
-              )}
-            </Stack>
-          </Stack>
+            CFB
+          </Typography>
 
           <IconButton aria-label="refresh" onClick={reload}>
             <RefreshIcon />
@@ -196,30 +166,72 @@ export default function CollegeFootballPage() {
         </Stack>
 
         {/* Subtitle (optional info) */}
-        <Typography
-          variant="caption"
-          sx={{ opacity: 0.8 }}
-        >
+        <Typography variant="caption" sx={{ opacity: 0.8 }}>
           {metaSubtitle}
         </Typography>
 
-        {/* View toggle row */}
+        {/* View toggle row + conference filters */}
         <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={1}
           alignItems={{ xs: "stretch", sm: "center" }}
           justifyContent="space-between"
         >
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontWeight: 700,
-              display: { xs: "none", sm: "block" },
-            }}
+          {/* Left cluster: view label + conference filters */}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            sx={{ flex: 1, minWidth: 0 }}
           >
-            {viewLabel}
-          </Typography>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 700,
+                display: { xs: "none", sm: "block" },
+              }}
+            >
+              {viewLabel}
+            </Typography>
 
+            <Stack
+              direction="row"
+              spacing={0.75}
+              alignItems="center"
+              flexWrap="wrap"
+            >
+              <Chip
+                label={conferenceChipLabel}
+                onClick={handleOpenConfs}
+                variant="outlined"
+                color={selectedConfs.size ? "primary" : "default"}
+                sx={{
+                  borderRadius: 999,
+                  flexShrink: 0,
+                }}
+              />
+
+              {/* Quick chips: show on sm+ to avoid crowding on tiny screens */}
+              <Stack
+                direction="row"
+                spacing={0.75}
+                sx={{ display: { xs: "none", sm: "flex" } }}
+              >
+                <Chip label="P5" variant="outlined" onClick={selectP5} />
+                <Chip label="G5" variant="outlined" onClick={selectG5} />
+                <Chip label="Ind" variant="outlined" onClick={selectInd} />
+                {selectedConfs.size > 0 && (
+                  <Chip
+                    label="Clear"
+                    variant="outlined"
+                    onClick={clearConfs}
+                  />
+                )}
+              </Stack>
+            </Stack>
+          </Stack>
+
+          {/* Right: view toggle buttons */}
           <ButtonGroup
             sx={{
               width: { xs: "100%", sm: "auto" },

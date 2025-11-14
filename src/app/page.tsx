@@ -8,7 +8,6 @@ import {
   Stack,
   Typography,
   Button,
-  Grid,
   Card,
   CardContent,
   IconButton,
@@ -279,26 +278,43 @@ export default function HomePage() {
         </Stack>
       </Box>
 
-      {/* Desktop / tablet: original card grid */}
+      {/* Desktop / tablet: compact, centered cards (no Grid) */}
       <Box
         sx={{
           display: { xs: "none", md: "block" },
           px: { xs: 2, md: 4 },
-          maxWidth: 900,
+          maxWidth: 960,
           mx: "auto",
         }}
       >
-        <Grid container spacing={2}>
-          {LEAGUES.map((lg) => (
-            <LeagueCard
-              key={lg.href}
-              href={lg.href}
-              title={lg.title}
-              icon={lg.icon}
-              coming={lg.coming}
-            />
-          ))}
-        </Grid>
+        <Stack spacing={2} alignItems="center">
+          <Typography
+            variant="subtitle2"
+            sx={{
+              textTransform: "uppercase",
+              letterSpacing: 2,
+              opacity: 0.7,
+            }}
+          >
+            Sports on BetMaxx
+          </Typography>
+          <Stack
+            direction="row"
+            spacing={2}
+            flexWrap="wrap"
+            justifyContent="center"
+          >
+            {LEAGUES.map((lg) => (
+              <LeagueCard
+                key={lg.href}
+                href={lg.href}
+                title={lg.title}
+                icon={lg.icon}
+                coming={lg.coming}
+              />
+            ))}
+          </Stack>
+        </Stack>
       </Box>
 
       {/* divider */}
@@ -336,21 +352,44 @@ export default function HomePage() {
       <GoldDivider />
 
       {/* VALUE PROPS */}
-      <Box sx={{ px: { xs: 2, md: 4 } }}>
-        <Grid container spacing={2}>
-          <ValueCard
-            title="Best Line, Instantly"
-            body="We scan multiple books so you don’t leave value on the table."
-          />
-          <ValueCard
-            title="Live Refresh"
-            body="Odds update instantly. React like your in the bleachers."
-          />
-          <ValueCard
-            title="Built for Speed"
-            body="Minimal clicks. Faster decisions. More fun. A true bettor’s UI."
-          />
-        </Grid>
+      <Box
+        sx={{
+          px: { xs: 2, md: 4 },
+          maxWidth: 960,
+          mx: "auto",
+        }}
+      >
+        <Stack spacing={2}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              textTransform: "uppercase",
+              letterSpacing: 2,
+              opacity: 0.7,
+              textAlign: { xs: "center", md: "left" },
+            }}
+          >
+            Why Bettors Use BetMaxx
+          </Typography>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            alignItems="stretch"
+          >
+            <ValueCard
+              title="Best Line, Instantly"
+              body="We scan multiple books so you don’t leave value on the table."
+            />
+            <ValueCard
+              title="Live Refresh"
+              body="Odds update instantly. React like you’re in the bleachers."
+            />
+            <ValueCard
+              title="Built for Speed"
+              body="Minimal clicks. Faster decisions. More fun. A true bettor’s UI."
+            />
+          </Stack>
+        </Stack>
       </Box>
 
       {/* ROADMAP / BETA */}
@@ -465,47 +504,80 @@ function LeagueCard({
   coming?: boolean;
 }) {
   return (
-    <Grid item xs={12} sm={6} md={4}>
+    <Box
+      sx={{
+        flex: "0 1 220px",
+        maxWidth: 240,
+      }}
+    >
       <Card
         variant="outlined"
         component={Link as any}
         href={href}
         sx={{
           textDecoration: "none",
-          borderRadius: 4,
-          transition: "transform 160ms ease",
-          ":hover": { transform: "translateY(-2px)" },
+          borderRadius: 999,
+          transition: "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+          ":hover": {
+            transform: "translateY(-2px)",
+            borderColor: alpha("#FFD600", 0.7),
+            boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+          },
           position: "relative",
+          height: "100%",
+          bgcolor: "rgba(255,255,255,0.02)",
         }}
       >
-        <CardContent>
-          <Stack spacing={1.25}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
+        <CardContent sx={{ py: 1.4, px: 2.2 }}>
+          <Stack
+            direction="row"
+            spacing={1.25}
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Stack direction="row" spacing={1.2} alignItems="center">
               <Box sx={{ opacity: 0.9 }}>{icon}</Box>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
                 {title}
               </Typography>
             </Stack>
             {coming && (
               <Chip
-                label="Coming Soon"
+                label="Soon"
                 size="small"
-                sx={{ alignSelf: { xs: "flex-start", sm: "flex-start" } }}
+                sx={{
+                  fontSize: 10,
+                  px: 0.5,
+                  height: 22,
+                  borderRadius: 999,
+                }}
               />
             )}
           </Stack>
         </CardContent>
       </Card>
-    </Grid>
+    </Box>
   );
 }
 
 function ValueCard({ title, body }: { title: string; body: string }) {
   return (
-    <Grid item xs={12} md={4}>
-      <Card variant="outlined" sx={{ borderRadius: 4, height: "100%" }}>
+    <Box
+      sx={{
+        flex: "1 1 0",
+        minWidth: { xs: "100%", md: 0 },
+      }}
+    >
+      <Card
+        variant="outlined"
+        sx={{
+          borderRadius: 3,
+          height: "100%",
+          bgcolor: "rgba(255,255,255,0.02)",
+        }}
+      >
         <CardContent>
-          <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.75 }}>
             {title}
           </Typography>
           <Typography variant="body2" sx={{ opacity: 0.85 }}>
@@ -513,7 +585,7 @@ function ValueCard({ title, body }: { title: string; body: string }) {
           </Typography>
         </CardContent>
       </Card>
-    </Grid>
+    </Box>
   );
 }
 

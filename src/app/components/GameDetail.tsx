@@ -124,8 +124,11 @@ export default function GameDetail({
   const [bookMode, setBookMode] = React.useState<BookMode>("all");
 
   const { preferredBooks } = useBooks();
+
+  // ✅ use normalized keys for favorites, so keys like "espnbet" / "hardrockbet"
+  // match labels like "ESPN BET" / "Hard Rock Bet"
   const preferredSet = React.useMemo(
-    () => new Set(preferredBooks.map((b) => b.toLowerCase().trim())),
+    () => new Set(preferredBooks.map((b) => normalizeBookKey(b))),
     [preferredBooks]
   );
 
@@ -171,9 +174,12 @@ export default function GameDetail({
     if (!rows.length) return rows;
 
     const [best, ...rest] = rows;
+
+    // ✅ filter using normalized book keys
     const filteredPreferred = rest.filter((r) =>
-      preferredSet.has(r.book.toLowerCase().trim())
+      preferredSet.has(normalizeBookKey(r.book))
     );
+
     return [best, ...filteredPreferred];
   }
 
@@ -382,8 +388,9 @@ export default function GameDetail({
 
               <List dense disablePadding>
                 {rowsForMode(mlRowsA).map((row, idx) => {
+                  // ✅ use normalized key to mark preferred
                   const isPreferred = preferredSet.has(
-                    row.book.toLowerCase().trim()
+                    normalizeBookKey(row.book)
                   );
 
                   const listItem = (
@@ -486,7 +493,7 @@ export default function GameDetail({
               <List dense disablePadding>
                 {rowsForMode(mlRowsB).map((row, idx) => {
                   const isPreferred = preferredSet.has(
-                    row.book.toLowerCase().trim()
+                    normalizeBookKey(row.book)
                   );
 
                   const listItem = (
@@ -596,7 +603,7 @@ export default function GameDetail({
               <List dense disablePadding>
                 {rowsForMode(overRows).map((row, idx) => {
                   const isPreferred = preferredSet.has(
-                    row.book.toLowerCase().trim()
+                    normalizeBookKey(row.book)
                   );
 
                   const listItem = (
@@ -699,7 +706,7 @@ export default function GameDetail({
               <List dense disablePadding>
                 {rowsForMode(underRows).map((row, idx) => {
                   const isPreferred = preferredSet.has(
-                    row.book.toLowerCase().trim()
+                    normalizeBookKey(row.book)
                   );
 
                   const listItem = (

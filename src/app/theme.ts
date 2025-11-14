@@ -3,7 +3,7 @@ import { createTheme } from "@mui/material/styles";
 const theme = createTheme({
   palette: {
     mode: "dark",
-    primary: { main: "#f7d31fff" },  // BetMaxx green
+    primary: { main: "#F5C242" },  // BetMaxx green
     secondary: { main: "#f98911ff" },
     background: { default: "#0e1116", paper: "#151a21" },
   },

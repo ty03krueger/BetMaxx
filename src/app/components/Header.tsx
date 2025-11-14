@@ -33,46 +33,77 @@ import { useAuth } from "../providers";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 
-function AccentX() {
-  return (
-    <Box
-      aria-label="BetMaxx accent X"
-      sx={{
-        position: "relative",
-        width: 16,
-        height: 16,
-        mx: 0.25,
-        display: "inline-block",
-      }}
-    >
-      <Box
-        sx={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          width: 16,
-          height: 2,
-          bgcolor: alpha("#FFFFFF", 0.5),
-          transform: "translate(-50%, -50%) rotate(45deg)",
-          borderRadius: 1,
-        }}
-      />
-      <Box
-        sx={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          width: 16,
-          height: 2,
-          bgcolor: "#FFD600",
-          boxShadow: "0 0 8px rgba(255,214,0,.35)",
-          transform: "translate(-50%, -50%) rotate(-45deg)",
-          borderRadius: 1,
-        }}
-      />
-    </Box>
-  );
-}
+// Simple list of NFL team keywords (lowercase) used to decide NFL vs CFB.
+// Placeholder v1: if it doesn't look like one of these → treat as CFB.
+const NFL_TEAM_KEYWORDS: string[] = [
+  "49ers",
+  "niners",
+  "san francisco 49ers",
+  "sf 49ers",
+  "cardinals",
+  "arizona cardinals",
+  "falcons",
+  "atlanta falcons",
+  "ravens",
+  "baltimore ravens",
+  "bills",
+  "buffalo bills",
+  "panthers",
+  "carolina panthers",
+  "bears",
+  "chicago bears",
+  "bengals",
+  "cincinnati bengals",
+  "browns",
+  "cleveland browns",
+  "cowboys",
+  "dallas cowboys",
+  "broncos",
+  "denver broncos",
+  "lions",
+  "detroit lions",
+  "packers",
+  "green bay packers",
+  "texans",
+  "houston texans",
+  "colts",
+  "indianapolis colts",
+  "jaguars",
+  "jacksonville jaguars",
+  "chiefs",
+  "kansas city chiefs",
+  "raiders",
+  "las vegas raiders",
+  "chargers",
+  "los angeles chargers",
+  "rams",
+  "los angeles rams",
+  "dolphins",
+  "miami dolphins",
+  "vikings",
+  "minnesota vikings",
+  "patriots",
+  "new england patriots",
+  "saints",
+  "new orleans saints",
+  "giants",
+  "new york giants",
+  "jets",
+  "new york jets",
+  "eagles",
+  "philadelphia eagles",
+  "steelers",
+  "pittsburgh steelers",
+  "seahawks",
+  "seattle seahawks",
+  "buccaneers",
+  "bucs",
+  "tampa bay buccaneers",
+  "titans",
+  "tennessee titans",
+  "commanders",
+  "washington commanders",
+].map((s) => s.toLowerCase());
 
 export default function Header() {
   const pathname = usePathname();
@@ -86,7 +117,9 @@ export default function Header() {
   const menuOpen = Boolean(menuEl);
 
   // League menu (mobile)
-  const [leagueMenuEl, setLeagueMenuEl] = React.useState<null | HTMLElement>(null);
+  const [leagueMenuEl, setLeagueMenuEl] = React.useState<null | HTMLElement>(
+    null
+  );
   const leagueMenuOpen = Boolean(leagueMenuEl);
 
   // Initialize search with existing ?q= if present
@@ -144,9 +177,38 @@ export default function Header() {
     [pathname, router, searchParams]
   );
 
+  // 🔍 Smart league inference based on query text
+  const inferRouteFromQuery = React.useCallback((query: string): string => {
+    const q = query.toLowerCase();
+
+    const looksNFL = NFL_TEAM_KEYWORDS.some((kw) => q.includes(kw));
+
+    // If it matches an NFL team keyword → NFL, otherwise default to CFB.
+    return looksNFL ? "/nfl" : "/cfb";
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    pushQueryAndNotify(q.trim());
+    const trimmed = q.trim();
+
+    // If empty search, just clear on current page
+    if (!trimmed) {
+      pushQueryAndNotify("");
+      return;
+    }
+
+    const targetRoute = inferRouteFromQuery(trimmed);
+
+    // If we're already on the inferred league route, just push query + notify
+    if (pathname.startsWith(targetRoute)) {
+      pushQueryAndNotify(trimmed);
+      return;
+    }
+
+    // Otherwise, navigate to the inferred league with ?q= in URL.
+    const sp = new URLSearchParams();
+    sp.set("q", trimmed);
+    router.push(`${targetRoute}?${sp.toString()}`);
   };
 
   const handleClear = () => {
@@ -155,7 +217,8 @@ export default function Header() {
   };
 
   // Auth menu handlers
-  const handleAvatarClick = (e: React.MouseEvent<HTMLElement>) => setMenuEl(e.currentTarget);
+  const handleAvatarClick = (e: React.MouseEvent<HTMLElement>) =>
+    setMenuEl(e.currentTarget);
   const handleMenuClose = () => setMenuEl(null);
 
   const handleGoAccount = () => {
@@ -238,18 +301,12 @@ export default function Header() {
           }}
         >
           <Typography
-            variant="h6"
+            variant="overline"
             className="bm-word"
-            sx={{
-              fontWeight: 800,
-              letterSpacing: 0.2,
-              mr: 0.25,
-              fontSize: { xs: "1.1rem", sm: "1.35rem", md: "1.5rem" },
-            }}
+            sx={{ letterSpacing: 2, opacity: 0.8 }}
           >
-            BetMax
+            BetMaxx
           </Typography>
-          <AccentX />
         </Box>
 
         {/* Center Search */}
