@@ -41,6 +41,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import SportsIcon from "@mui/icons-material/Sports";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+
 import type { SavedLine } from "../../lib/userData";
 
 import { useAuth } from "../providers";
@@ -64,13 +65,7 @@ type UserDoc = {
     /** IMPORTANT: store sportsbook KEYS (from Odds API), not labels */
     books?: string[];
   };
-  savedLines?: Array<{
-    id: string;
-    league: string;
-    label: string; // e.g. "Tampa Bay Buccaneers @ Buffalo Bills – ML"
-    price?: string;
-    createdAt?: number;
-  }>;
+  savedLines?: SavedLine[];
 };
 
 type View = "all" | "ml" | "ou";
@@ -166,13 +161,20 @@ const norm = (s?: string) =>
     .trim();
 
 // ---------- SavedLine Mini Card ----------
+
+type SavedLineEnriched = SavedLine & {
+  _kickoff: number;
+  _sport: string;
+  _game: Game | null;
+};
+
 function SavedLineCard({
   ln,
   game,
   onOpen,
   onRemove,
 }: {
-  ln: Required<SavedLineEnriched>;
+  ln: SavedLineEnriched;
   game: Game | null;
   onOpen: () => void;
   onRemove: () => void;
@@ -330,10 +332,7 @@ function SavedLineCard({
   );
 }
 
-// ---------- Page ----------
-type SavedLineEnriched = UserDoc["savedLines"] extends Array<infer U>
-  ? U & { _kickoff?: number; _sport?: string }
-  : never;
+// ---------- Page-level helper types ----------
 
 type BoardsMap = Record<string, Game[]>; // sport -> games
 
@@ -595,11 +594,9 @@ export default function AccountPage() {
     }
   };
 
-  const savedLinesEnriched: Required<
-    SavedLineEnriched & { _game?: Game | null }
-  >[] = React.useMemo(() => {
+  const savedLinesEnriched = React.useMemo<SavedLineEnriched[]>(() => {
     const lines = uDoc?.savedLines || [];
-    const out = lines.map((ln) => {
+    const out: SavedLineEnriched[] = lines.map((ln) => {
       const sport = sportKeyForLeague(ln.league);
       const g = findGameForLine(ln);
       const kickoff = g
@@ -610,10 +607,10 @@ export default function AccountPage() {
         _kickoff: kickoff,
         _sport: sport,
         _game: g ?? null,
-      } as any;
+      };
     });
     out.sort((a, b) => a._kickoff - b._kickoff);
-    return out as any;
+    return out;
   }, [uDoc?.savedLines, boards]);
 
   // ----- Upcoming (9 days) for favorite teams -----
@@ -1093,8 +1090,8 @@ export default function AccountPage() {
                     {savedLinesEnriched.map((ln) => (
                       <SavedLineCard
                         key={`${ln.league}:${ln.id}:${ln.label}`}
-                        ln={ln as any}
-                        game={ln._game || null}
+                        ln={ln}
+                        game={ln._game}
                         onOpen={() => openSavedLine(ln)}
                         onRemove={() => removeSavedLine(ln)}
                       />
