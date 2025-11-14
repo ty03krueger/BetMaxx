@@ -91,15 +91,6 @@ const BOOK_URLS: Record<string, string> = {
  *  - remove "sportsbook"
  *  - strip non-alphanumeric
  *  - remove spaces
- *
- * Examples:
- *  "DraftKings"           -> "draftkings"
- *  "FanDuel"              -> "fanduel"
- *  "BetMGM"               -> "betmgm"
- *  "Caesars Sportsbook"   -> "caesars"
- *  "ESPN BET"             -> "espnbet"
- *  "Fanatics Sportsbook"  -> "fanatics"
- *  "Hard Rock Bet"        -> "hardrockbet"
  */
 function normalizeBookKey(raw: string): string {
   return raw
@@ -107,6 +98,12 @@ function normalizeBookKey(raw: string): string {
     .replace(/sportsbook/g, "")
     .replace(/\s+/g, "")
     .replace(/[^a-z0-9]/g, "");
+}
+
+// Helper to get the outbound URL for a book label
+function getBookUrl(raw: string): string | undefined {
+  const key = normalizeBookKey(raw);
+  return BOOK_URLS[key];
 }
 
 export default function GameDetail({
@@ -211,6 +208,7 @@ export default function GameDetail({
     });
   }, [open, game]);
 
+  // Now this ONLY logs, the actual navigation is handled by the <a> link
   async function handleBookClick(options: {
     book: string;
     market: "ml" | "total";
@@ -219,9 +217,7 @@ export default function GameDetail({
     price?: number;
   }) {
     const rawLabel = options.book || "";
-    const normKey = normalizeBookKey(rawLabel); // 🔑 use normalized label for URL + logging
-
-    const url = BOOK_URLS[normKey];
+    const normKey = normalizeBookKey(rawLabel);
 
     const sportKey =
       (game as any).sportKey ||
@@ -249,16 +245,6 @@ export default function GameDetail({
       });
     } catch (e) {
       console.error("Failed to log outbound click", e);
-    }
-
-    if (url) {
-      try {
-        window.open(url, "_blank", "noopener,noreferrer");
-      } catch (e) {
-        console.error("Failed to open sportsbook URL", e);
-      }
-    } else {
-      console.warn("No URL mapped for book:", rawLabel, "->", normKey);
     }
   }
 
@@ -388,13 +374,17 @@ export default function GameDetail({
 
               <List dense disablePadding>
                 {rowsForMode(mlRowsA).map((row, idx) => {
-                  // ✅ use normalized key to mark preferred
                   const isPreferred = preferredSet.has(
                     normalizeBookKey(row.book)
                   );
+                  const url = getBookUrl(row.book);
 
                   const listItem = (
                     <ListItem
+                      component="a"
+                      href={url ?? "#"}
+                      target={url ? "_blank" : undefined}
+                      rel={url ? "noopener noreferrer" : undefined}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -409,7 +399,7 @@ export default function GameDetail({
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
-                        cursor: "pointer",
+                        cursor: url ? "pointer" : "default",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)"
@@ -419,12 +409,15 @@ export default function GameDetail({
                             ? "1px solid rgba(255,214,0,0.35)"
                             : "1px solid transparent",
                         transition: "all .18s ease",
+                        color: "inherit",
+                        textDecoration: "none",
+                        "&:visited": { color: "inherit" },
                         "&:hover": {
                           bgcolor:
                             idx === 0
                               ? "rgba(255,214,0,0.15)"
                               : "rgba(255,255,255,0.06)",
-                          transform: "translateY(-1px)",
+                          transform: url ? "translateY(-1px)" : "none",
                         },
                       }}
                       secondaryAction={
@@ -495,9 +488,14 @@ export default function GameDetail({
                   const isPreferred = preferredSet.has(
                     normalizeBookKey(row.book)
                   );
+                  const url = getBookUrl(row.book);
 
                   const listItem = (
                     <ListItem
+                      component="a"
+                      href={url ?? "#"}
+                      target={url ? "_blank" : undefined}
+                      rel={url ? "noopener noreferrer" : undefined}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -512,7 +510,7 @@ export default function GameDetail({
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
-                        cursor: "pointer",
+                        cursor: url ? "pointer" : "default",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)"
@@ -522,12 +520,15 @@ export default function GameDetail({
                             ? "1px solid rgba(255,214,0,0.35)"
                             : "1px solid transparent",
                         transition: "all .18s ease",
+                        color: "inherit",
+                        textDecoration: "none",
+                        "&:visited": { color: "inherit" },
                         "&:hover": {
                           bgcolor:
                             idx === 0
                               ? "rgba(255,214,0,0.15)"
                               : "rgba(255,255,255,0.06)",
-                          transform: "translateY(-1px)",
+                          transform: url ? "translateY(-1px)" : "none",
                         },
                       }}
                       secondaryAction={
@@ -605,9 +606,14 @@ export default function GameDetail({
                   const isPreferred = preferredSet.has(
                     normalizeBookKey(row.book)
                   );
+                  const url = getBookUrl(row.book);
 
                   const listItem = (
                     <ListItem
+                      component="a"
+                      href={url ?? "#"}
+                      target={url ? "_blank" : undefined}
+                      rel={url ? "noopener noreferrer" : undefined}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -623,7 +629,7 @@ export default function GameDetail({
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
-                        cursor: "pointer",
+                        cursor: url ? "pointer" : "default",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)"
@@ -633,6 +639,9 @@ export default function GameDetail({
                             ? "1px solid rgba(255,214,0,0.35)"
                             : "1px solid transparent",
                         transition: "all .18s ease",
+                        color: "inherit",
+                        textDecoration: "none",
+                        "&:visited": { color: "inherit" },
                         "&:hover": {
                           bgcolor:
                             idx === 0
@@ -708,9 +717,14 @@ export default function GameDetail({
                   const isPreferred = preferredSet.has(
                     normalizeBookKey(row.book)
                   );
+                  const url = getBookUrl(row.book);
 
                   const listItem = (
                     <ListItem
+                      component="a"
+                      href={url ?? "#"}
+                      target={url ? "_blank" : undefined}
+                      rel={url ? "noopener noreferrer" : undefined}
                       disableGutters
                       onClick={() =>
                         handleBookClick({
@@ -726,7 +740,7 @@ export default function GameDetail({
                         py: 1,
                         mb: 0.75,
                         borderRadius: 2,
-                        cursor: "pointer",
+                        cursor: url ? "pointer" : "default",
                         bgcolor:
                           idx === 0
                             ? "rgba(255,214,0,0.10)"
@@ -736,6 +750,9 @@ export default function GameDetail({
                             ? "1px solid rgba(255,214,0,0.35)"
                             : "1px solid transparent",
                         transition: "all .18s ease",
+                        color: "inherit",
+                        textDecoration: "none",
+                        "&:visited": { color: "inherit" },
                         "&:hover": {
                           bgcolor:
                             idx === 0
