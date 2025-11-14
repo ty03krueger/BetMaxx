@@ -39,7 +39,7 @@ import { useGameDialog } from "../components/GameDialogProvider";
 type View = "all" | "ml" | "ou";
 type Market = "Moneyline" | "Total";
 
-export default function CollegeFootballPage() {
+function CollegeFootballContent() {
   const [view, setView] = useState<View>("all");
   const { games, loading, error, reload } = useOdds({ sport: "ncaaf" });
 
@@ -349,6 +349,22 @@ export default function CollegeFootballPage() {
         </Stack>
       )}
     </Stack>
+  );
+}
+
+export default function CollegeFootballPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <Stack spacing={1.5}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} variant="rounded" height={84} />
+          ))}
+        </Stack>
+      }
+    >
+      <CollegeFootballContent />
+    </React.Suspense>
   );
 }
 
