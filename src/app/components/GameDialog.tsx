@@ -13,7 +13,7 @@ import {
   Button,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import type { Game } from "../../types"; // <- or wherever your Game type lives
+import type { Game } from "../api/odds/route"; // <- or wherever your Game type lives
 
 type Props = {
   open: boolean;
