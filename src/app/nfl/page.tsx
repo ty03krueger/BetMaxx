@@ -25,7 +25,7 @@ import { useGameDialog } from "../components/GameDialogProvider";
 type View = "all" | "ml" | "ou";
 type Market = "Moneyline" | "Total";
 
-export default function Home() {
+function NFLPageContent() {
   const [view, setView] = useState<View>("all");
   const { games, loading, error, reload } = useOdds(); // NFL by default
   const searchParams = useSearchParams();
@@ -246,5 +246,20 @@ function AllGamesCard({
         </Box>
       </CardContent>
     </Card>
+  );
+}
+
+// ✅ Default export wrapped in Suspense for useSearchParams
+export default function Home() {
+  return (
+    <React.Suspense
+      fallback={
+        <div style={{ padding: 24, opacity: 0.8 }}>
+          Loading NFL board…
+        </div>
+      }
+    >
+      <NFLPageContent />
+    </React.Suspense>
   );
 }
