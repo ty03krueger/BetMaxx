@@ -43,7 +43,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <AuthContext.Provider value={{ user, loading }}>
         {/* 🔹 Per-user preferred books context */}
         <BooksProvider user={user}>
-          <Header />
+          {/* 🔹 Wrap Header (uses useSearchParams) in Suspense so Next is happy */}
+          <React.Suspense fallback={null}>
+            <Header />
+          </React.Suspense>
+
           {/* Shared GameDetail modal + page content */}
           <GameDialogProvider>
             <Container maxWidth="lg" sx={{ py: 4 }}>
