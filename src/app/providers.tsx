@@ -32,6 +32,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
 
+  // 🔐 Auth listener
   React.useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u || null);
@@ -40,8 +41,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
-  // 🔹 Track basic usage per signed-in user: totalVisits + lastActiveAt
+  // 🔹 Track basic usage per *signed-in* user: totalVisits + lastActiveAt
   React.useEffect(() => {
+    if (loading) return;
     if (!user) return;
 
     const ref = doc(db, "users", user.uid);
@@ -58,7 +60,52 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     ).catch((e) => {
       console.error("Failed to update user usage stats", e);
     });
-  }, [user?.uid]);
+  }, [user?.uid, loading]);
+
+  // 🔹 Track anonymous usage (visitors who are NOT signed in)
+  React.useEffect(() => {
+    if (loading) return;
+    if (user) return; // only run for non-authenticated visitors
+    if (typeof window === "undefined") return;
+
+    try {
+      // Stable anonymous id stored in localStorage
+      let anonId = window.localStorage.getItem("betmaxx:anonId");
+      if (!anonId) {
+        if ("crypto" in window && "randomUUID" in window.crypto) {
+          anonId = window.crypto.randomUUID();
+        } else {
+          anonId = `anon_${Math.random().toString(36).slice(2)}`;
+        }
+        window.localStorage.setItem("betmaxx:anonId", anonId);
+      }
+
+      const today = new Date();
+      const dayKey = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
+      const docId = `${anonId}_${dayKey}`;
+
+      const userAgent =
+        typeof navigator !== "undefined" ? navigator.userAgent : null;
+
+      const ref = doc(db, "anonymousUsage", docId);
+
+      setDoc(
+        ref,
+        {
+          anonId,
+          day: dayKey,
+          userAgent,
+          lastActiveAt: serverTimestamp(),
+          visitCount: increment(1),
+        },
+        { merge: true }
+      ).catch((e) => {
+        console.error("Failed to update anonymous usage stats", e);
+      });
+    } catch (e) {
+      console.error("Anonymous usage tracking error", e);
+    }
+  }, [user, loading]);
 
   return (
     <ThemeProvider theme={theme}>
