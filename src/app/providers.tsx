@@ -62,6 +62,57 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     });
   }, [user?.uid, loading]);
 
+  // 🔥 Continuous TIME tracking for signed-in users (totalTimeSeconds)
+  React.useEffect(() => {
+    if (loading) return;
+    if (!user) return;
+    if (typeof window === "undefined") return;
+
+    const uid = user.uid;
+    const ref = doc(db, "users", uid);
+
+    let lastTick = Date.now();
+
+    const intervalId = window.setInterval(() => {
+      const now = Date.now();
+      const seconds = Math.floor((now - lastTick) / 1000);
+
+      if (seconds <= 0) {
+        lastTick = now;
+        return;
+      }
+
+      lastTick = now;
+
+      setDoc(
+        ref,
+        {
+          stats: {
+            lastActiveAt: serverTimestamp(),
+          },
+          "stats.totalTimeSeconds": increment(seconds),
+        } as any,
+        { merge: true }
+      ).catch((e) => {
+        console.error("Failed to increment totalTimeSeconds for user", e);
+      });
+    }, 15_000); // ping ~every 15s
+
+    // If the tab becomes visible again, reset baseline to avoid overcounting
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        lastTick = Date.now();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [user?.uid, loading]);
+
   // 🔹 Track anonymous usage (visitors who are NOT signed in)
   React.useEffect(() => {
     if (loading) return;
@@ -92,13 +143,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       // 🔴 IMPORTANT: collection + docId must match security rules
       const ref = doc(db, "anonymousUsage", anonId);
 
-      // 🔴 IMPORTANT: only these top-level fields are allowed by rules:
+      // 🔴 only these top-level fields are allowed by rules:
       // userAgent, ipHash, counts, createdAt, lastActiveAt
       setDoc(
         ref,
         {
           userAgent,
-          ipHash: null, // placeholder; we aren't storing real IP
+          ipHash: null, // placeholder; not storing real IP
           createdAt: serverTimestamp(),
           lastActiveAt: serverTimestamp(),
           counts: {
@@ -112,150 +163,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Anonymous usage tracking error", e);
     }
-  }, [user, loading]);
-
-  // 🔥 Session-based TIME tracking (Option C: idle + visibility)
-  React.useEffect(() => {
-    if (loading) return;
-    if (typeof window === "undefined") return;
-
-    const IDLE_TIMEOUT_MS = 60_000; // 60 seconds
-    let destroyed = false;
-
-    let sessionStart: number | null = Date.now();
-    let lastActivity: number = Date.now();
-    let isActive = true;
-
-    // Common helper: log a finished session (seconds) to Firestore
-    const flushSession = async (reason: string) => {
-      if (destroyed) return;
-      if (!sessionStart) return;
-
-      const now = Date.now();
-      const durationSec = Math.floor((now - sessionStart) / 1000);
-      if (durationSec <= 0) {
-        sessionStart = null;
-        return;
-      }
-
-      sessionStart = null;
-      isActive = false;
-
-      try {
-        if (user) {
-          // Signed-in user → users/{uid}.stats.totalTimeSeconds
-          const ref = doc(db, "users", user.uid);
-          await setDoc(
-            ref,
-            {
-              stats: {
-                lastActiveAt: serverTimestamp(),
-              },
-              "stats.totalTimeSeconds": increment(durationSec),
-            } as any,
-            { merge: true }
-          );
-        } else {
-          // Anonymous visitor → anonymousUsage/{anon_xxx}.counts.totalTimeSeconds
-          let anonId = window.localStorage.getItem("betmaxx:anonId");
-          if (!anonId) {
-            if ("crypto" in window && "randomUUID" in window.crypto) {
-              anonId = (window.crypto as any).randomUUID();
-            } else {
-              anonId = Math.random().toString(36).slice(2);
-            }
-            anonId = `anon_${anonId}`;
-            window.localStorage.setItem("betmaxx:anonId", anonId);
-          } else if (!anonId.startsWith("anon_")) {
-            anonId = `anon_${anonId}`;
-            window.localStorage.setItem("betmaxx:anonId", anonId);
-          }
-
-          const userAgent =
-            typeof navigator !== "undefined" ? navigator.userAgent : null;
-
-          const ref = doc(db, "anonymousUsage", anonId);
-
-          await setDoc(
-            ref,
-            {
-              userAgent,
-              ipHash: null,
-              createdAt: serverTimestamp(),
-              lastActiveAt: serverTimestamp(),
-              counts: {
-                totalTimeSeconds: increment(durationSec),
-              },
-            },
-            { merge: true }
-          );
-        }
-      } catch (e) {
-        console.error("Failed to flush session time", reason, e);
-      }
-    };
-
-    const recordActivity = () => {
-      if (destroyed) return;
-      const now = Date.now();
-      lastActivity = now;
-
-      // If we were "inactive", start a fresh session
-      if (!sessionStart) {
-        sessionStart = now;
-        isActive = true;
-      }
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        // Tab hidden → flush current session
-        flushSession("visibility_hidden");
-      } else if (document.visibilityState === "visible") {
-        // Tab visible again → start new session
-        const now = Date.now();
-        sessionStart = now;
-        lastActivity = now;
-        isActive = true;
-      }
-    };
-
-    const handleBeforeUnload = () => {
-      // Best-effort flush on tab close/navigation
-      flushSession("beforeunload");
-    };
-
-    const activityEvents: Array<keyof WindowEventMap> = [
-      "pointerdown",
-      "keydown",
-      "touchstart",
-      "scroll",
-    ];
-
-    activityEvents.forEach((ev) =>
-      window.addEventListener(ev, recordActivity, { passive: true })
-    );
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    const intervalId = window.setInterval(() => {
-      if (!isActive || !sessionStart) return;
-      const now = Date.now();
-      if (now - lastActivity > IDLE_TIMEOUT_MS) {
-        // User idle for > 60s → end this session
-        flushSession("idle_timeout");
-      }
-    }, 30_000); // check every 30s
-
-    return () => {
-      destroyed = true;
-      window.clearInterval(intervalId);
-      activityEvents.forEach((ev) =>
-        window.removeEventListener(ev, recordActivity)
-      );
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
   }, [user, loading]);
 
   return (
