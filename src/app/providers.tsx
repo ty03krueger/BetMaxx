@@ -73,30 +73,37 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       let anonId = window.localStorage.getItem("betmaxx:anonId");
       if (!anonId) {
         if ("crypto" in window && "randomUUID" in window.crypto) {
-          anonId = window.crypto.randomUUID();
+          anonId = (window.crypto as any).randomUUID();
         } else {
-          anonId = `anon_${Math.random().toString(36).slice(2)}`;
+          anonId = Math.random().toString(36).slice(2);
         }
+        // ensure it matches the rules: docId.matches("anon_.*")
+        anonId = `anon_${anonId}`;
+        window.localStorage.setItem("betmaxx:anonId", anonId);
+      } else if (!anonId.startsWith("anon_")) {
+        // normalize any old stored value
+        anonId = `anon_${anonId}`;
         window.localStorage.setItem("betmaxx:anonId", anonId);
       }
-
-      const today = new Date();
-      const dayKey = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
-      const docId = `${anonId}_${dayKey}`;
 
       const userAgent =
         typeof navigator !== "undefined" ? navigator.userAgent : null;
 
-      const ref = doc(db, "anonymousUsage", docId);
+      // 🔴 IMPORTANT: collection + docId must match security rules
+      const ref = doc(db, "anonymousUsage", anonId);
 
+      // 🔴 IMPORTANT: only these top-level fields are allowed by rules:
+      // userAgent, ipHash, counts, createdAt, lastActiveAt
       setDoc(
         ref,
         {
-          anonId,
-          day: dayKey,
           userAgent,
+          ipHash: null, // placeholder; we aren't storing real IP
+          createdAt: serverTimestamp(),
           lastActiveAt: serverTimestamp(),
-          visitCount: increment(1),
+          counts: {
+            totalVisits: increment(1),
+          },
         },
         { merge: true }
       ).catch((e) => {
