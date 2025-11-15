@@ -8,7 +8,10 @@ import theme from "./theme";
 import Header from "./components/Header";
 
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "../firebase"; // ✅ ensure /src/firebase.ts exists
+import { auth, db } from "../firebase"; // ✅ auth + db from firebase
+
+// Firestore helpers for usage tracking
+import { doc, setDoc, serverTimestamp, increment } from "firebase/firestore";
 
 // Shared modal provider
 import GameDialogProvider from "./components/GameDialogProvider";
@@ -36,6 +39,26 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     });
     return () => unsub();
   }, []);
+
+  // 🔹 Track basic usage per signed-in user: totalVisits + lastActiveAt
+  React.useEffect(() => {
+    if (!user) return;
+
+    const ref = doc(db, "users", user.uid);
+
+    setDoc(
+      ref,
+      {
+        stats: {
+          lastActiveAt: serverTimestamp(),
+        },
+        "stats.totalVisits": increment(1),
+      } as any,
+      { merge: true }
+    ).catch((e) => {
+      console.error("Failed to update user usage stats", e);
+    });
+  }, [user?.uid]);
 
   return (
     <ThemeProvider theme={theme}>
