@@ -114,6 +114,150 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading]);
 
+  // 🔥 Session-based TIME tracking (Option C: idle + visibility)
+  React.useEffect(() => {
+    if (loading) return;
+    if (typeof window === "undefined") return;
+
+    const IDLE_TIMEOUT_MS = 60_000; // 60 seconds
+    let destroyed = false;
+
+    let sessionStart: number | null = Date.now();
+    let lastActivity: number = Date.now();
+    let isActive = true;
+
+    // Common helper: log a finished session (seconds) to Firestore
+    const flushSession = async (reason: string) => {
+      if (destroyed) return;
+      if (!sessionStart) return;
+
+      const now = Date.now();
+      const durationSec = Math.floor((now - sessionStart) / 1000);
+      if (durationSec <= 0) {
+        sessionStart = null;
+        return;
+      }
+
+      sessionStart = null;
+      isActive = false;
+
+      try {
+        if (user) {
+          // Signed-in user → users/{uid}.stats.totalTimeSeconds
+          const ref = doc(db, "users", user.uid);
+          await setDoc(
+            ref,
+            {
+              stats: {
+                lastActiveAt: serverTimestamp(),
+              },
+              "stats.totalTimeSeconds": increment(durationSec),
+            } as any,
+            { merge: true }
+          );
+        } else {
+          // Anonymous visitor → anonymousUsage/{anon_xxx}.counts.totalTimeSeconds
+          let anonId = window.localStorage.getItem("betmaxx:anonId");
+          if (!anonId) {
+            if ("crypto" in window && "randomUUID" in window.crypto) {
+              anonId = (window.crypto as any).randomUUID();
+            } else {
+              anonId = Math.random().toString(36).slice(2);
+            }
+            anonId = `anon_${anonId}`;
+            window.localStorage.setItem("betmaxx:anonId", anonId);
+          } else if (!anonId.startsWith("anon_")) {
+            anonId = `anon_${anonId}`;
+            window.localStorage.setItem("betmaxx:anonId", anonId);
+          }
+
+          const userAgent =
+            typeof navigator !== "undefined" ? navigator.userAgent : null;
+
+          const ref = doc(db, "anonymousUsage", anonId);
+
+          await setDoc(
+            ref,
+            {
+              userAgent,
+              ipHash: null,
+              createdAt: serverTimestamp(),
+              lastActiveAt: serverTimestamp(),
+              counts: {
+                totalTimeSeconds: increment(durationSec),
+              },
+            },
+            { merge: true }
+          );
+        }
+      } catch (e) {
+        console.error("Failed to flush session time", reason, e);
+      }
+    };
+
+    const recordActivity = () => {
+      if (destroyed) return;
+      const now = Date.now();
+      lastActivity = now;
+
+      // If we were "inactive", start a fresh session
+      if (!sessionStart) {
+        sessionStart = now;
+        isActive = true;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        // Tab hidden → flush current session
+        flushSession("visibility_hidden");
+      } else if (document.visibilityState === "visible") {
+        // Tab visible again → start new session
+        const now = Date.now();
+        sessionStart = now;
+        lastActivity = now;
+        isActive = true;
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      // Best-effort flush on tab close/navigation
+      flushSession("beforeunload");
+    };
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "keydown",
+      "touchstart",
+      "scroll",
+    ];
+
+    activityEvents.forEach((ev) =>
+      window.addEventListener(ev, recordActivity, { passive: true })
+    );
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    const intervalId = window.setInterval(() => {
+      if (!isActive || !sessionStart) return;
+      const now = Date.now();
+      if (now - lastActivity > IDLE_TIMEOUT_MS) {
+        // User idle for > 60s → end this session
+        flushSession("idle_timeout");
+      }
+    }, 30_000); // check every 30s
+
+    return () => {
+      destroyed = true;
+      window.clearInterval(intervalId);
+      activityEvents.forEach((ev) =>
+        window.removeEventListener(ev, recordActivity)
+      );
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [user, loading]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
