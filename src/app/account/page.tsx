@@ -811,12 +811,12 @@ export default function AccountPage() {
             </Button>
             <Button
               component={Link}
-              href="/"
+              href="/parlay"
               variant="outlined"
               size="small"
               sx={{ borderRadius: 999 }}
             >
-              Home
+              Parlay Builder
             </Button>
           </Stack>
         </Stack>

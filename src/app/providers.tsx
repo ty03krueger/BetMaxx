@@ -19,6 +19,9 @@ import GameDialogProvider from "./components/GameDialogProvider";
 // 🔹 Books provider (preferred sportsbooks, per user)
 import { BooksProvider } from "../app/contexts/BookProvider";
 
+// 🔹 Parlay provider (shared parlay legs across app)
+import { ParlayProvider } from "./contexts/ParlayContext";
+
 // --- Auth Context ---
 type AuthCtx = { user: User | null; loading: boolean };
 export const AuthContext = React.createContext<AuthCtx>({
@@ -171,17 +174,20 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <AuthContext.Provider value={{ user, loading }}>
         {/* 🔹 Per-user preferred books context */}
         <BooksProvider user={user}>
-          {/* 🔹 Wrap Header (uses useSearchParams) in Suspense so Next is happy */}
-          <React.Suspense fallback={null}>
-            <Header />
-          </React.Suspense>
+          {/* 🔹 Parlay context wraps app so any page/card can add legs */}
+          <ParlayProvider>
+            {/* 🔹 Wrap Header (uses useSearchParams) in Suspense so Next is happy */}
+            <React.Suspense fallback={null}>
+              <Header />
+            </React.Suspense>
 
-          {/* Shared GameDetail modal + page content */}
-          <GameDialogProvider>
-            <Container maxWidth="lg" sx={{ py: 4 }}>
-              {children}
-            </Container>
-          </GameDialogProvider>
+            {/* Shared GameDetail modal + page content */}
+            <GameDialogProvider>
+              <Container maxWidth="lg" sx={{ py: 4 }}>
+                {children}
+              </Container>
+            </GameDialogProvider>
+          </ParlayProvider>
         </BooksProvider>
       </AuthContext.Provider>
     </ThemeProvider>

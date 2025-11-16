@@ -230,7 +230,7 @@ export default function HomePage() {
                 textAlign: "center",
               }}
             >
-              College Football
+              View College Football Odds
             </Button>
           </Stack>
         </Stack>
@@ -388,6 +388,10 @@ export default function HomePage() {
               title="Built for Speed"
               body="Minimal clicks. Faster decisions. More fun. A true bettor’s UI."
             />
+            <ValueCard
+              title="Plan Your Parlay"
+              body="Sign in to use MaxxSlips: build parlays and view every books payout."
+            />
           </Stack>
         </Stack>
       </Box>
@@ -430,7 +434,7 @@ export default function HomePage() {
                 </Button>
                 <Button
                   component={Link}
-                  href="/nba"
+                  href="/whats-next"
                   variant="outlined"
                   sx={{
                     borderRadius: 999,
@@ -438,7 +442,7 @@ export default function HomePage() {
                     textAlign: "center",
                   }}
                 >
-                  See What’s Next
+                  What's Next?
                 </Button>
               </Stack>
             </Stack>
